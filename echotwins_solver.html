@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EchoTwins AI — Question Solver</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════
+   THEME VARIABLES
+════════════════════════════════════════ */
+:root {
+  --g400:#4ADE80; --g500:#22C55E; --g600:#16A34A; --g700:#15803D; --g800:#166534;
+  --g100:#DCFCE7; --g200:#BBF7D0; --g50:#F0FDF4;
+}
+
+/* LIGHT THEME */
+[data-theme="light"] {
+  --bg:         #F0FDF4;
+  --surface:    #ffffff;
+  --surface2:   #F0FDF4;
+  --border:     #C6E8CC;
+  --ink:        #0F2517;
+  --ink2:       #1E4D2B;
+  --muted:      #4B7A59;
+  --nav-bg:     #ffffff;
+  --nav-border: #DCF5E4;
+  --card-bg:    #ffffff;
+  --input-bg:   #ffffff;
+  --input-border:#C6E8CC;
+  --chip-bg:    #F0FDF4;
+  --shadow:     0 2px 24px rgba(22,163,74,.10);
+  --shadow-lg:  0 8px 40px rgba(22,163,74,.15);
+  --wave-bg:    #F0FDF4;
+  --code-bg:    #0F1F14;
+}
+
+/* DARK THEME */
+[data-theme="dark"] {
+  --bg:         #0A1A0D;
+  --surface:    #111F14;
+  --surface2:   #162B1B;
+  --border:     #1E4028;
+  --ink:        #E8F5EC;
+  --ink2:       #B6DFC0;
+  --muted:      #7DB892;
+  --nav-bg:     #0D1F10;
+  --nav-border: #193324;
+  --card-bg:    #111F14;
+  --input-bg:   #0F1C12;
+  --input-border:#1E4028;
+  --chip-bg:    #162B1B;
+  --shadow:     0 2px 24px rgba(0,0,0,.40);
+  --shadow-lg:  0 8px 40px rgba(0,0,0,.50);
+  --wave-bg:    #0D1F10;
+  --code-bg:    #060E08;
+}
+
+/* ════════════════════════════════════════
+   BASE
+════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  transition: background .3s, color .3s;
+}
+
+/* ════════════════════════════════════════
+   TOP NAV
+════════════════════════════════════════ */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--nav-bg);
+  border-bottom: 2px solid var(--nav-border);
+  box-shadow: var(--shadow);
+  height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+  transition: background .3s, border-color .3s;
+}
+.nav-logo { display: flex; align-items: center; gap: 12px; }
+.logo-icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--g700), var(--g500));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(22,163,74,.35);
+}
+.logo-text { font-size: 20px; font-weight: 800; letter-spacing: -.4px; color: var(--ink); line-height: 1; }
+.logo-text span { color: var(--g600); }
+.logo-sub { font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: .04em; margin-top: 2px; }
+
+/* Step dots */
+.step-trail { display: flex; align-items: center; gap: 0; }
+.trail-dot-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.trail-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid #D1D5DB; background: var(--surface);
+  transition: all .3s;
+}
+.trail-dot.active { background: var(--g600); border-color: var(--g600); }
+.trail-dot.done   { background: var(--g200); border-color: var(--g500); }
+.trail-label { font-size: 10px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.trail-label.active { color: var(--g600); }
+.trail-line { width: 44px; height: 2px; background: var(--border); transition: background .3s; }
+.trail-line.done { background: var(--g400); }
+
+/* Theme toggle */
+.theme-toggle {
+  width: 44px; height: 24px; border-radius: 12px;
+  background: var(--border); border: none; cursor: pointer;
+  position: relative; transition: background .3s;
+  flex-shrink: 0;
+}
+[data-theme="dark"] .theme-toggle { background: var(--g600); }
+.theme-toggle-ball {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; position: absolute; top: 3px; left: 3px;
+  transition: transform .3s;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+}
+[data-theme="dark"] .theme-toggle-ball { transform: translateX(20px); }
+
+.nav-right { display: flex; align-items: center; gap: 12px; }
+
+/* ════════════════════════════════════════
+   PAGE LAYOUT
+════════════════════════════════════════ */
+.page { display: none; animation: fadeUp .4s ease both; }
+.page.active { display: block; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.container { max-width: 860px; margin: 0 auto; padding: 36px 20px 120px; }
+
+/* ════════════════════════════════════════
+   CARDS
+════════════════════════════════════════ */
+.card {
+  background: var(--card-bg);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 32px;
+  transition: background .3s, border-color .3s;
+}
+.card-green { border-color: var(--g500); box-shadow: 0 0 0 4px rgba(34,197,94,.10), var(--shadow); }
+.card + .card { margin-top: 20px; }
+
+/* ════════════════════════════════════════
+   BUTTONS
+════════════════════════════════════════ */
+.btn-primary {
+  background: linear-gradient(135deg, var(--g700), var(--g500));
+  color: #fff; font-weight: 700; padding: 13px 28px;
+  border-radius: 14px; border: none; cursor: pointer;
+  font-size: 14px; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 0 4px 14px rgba(22,163,74,.35);
+  transition: opacity .15s, transform .1s;
+}
+.btn-primary:hover { opacity: .9; transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(1px); }
+
+.btn-outline {
+  background: var(--surface);
+  color: var(--g700); font-weight: 600; padding: 12px 20px;
+  border-radius: 14px; border: 1.8px solid var(--g300);
+  cursor: pointer; font-size: 14px; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: all .15s;
+}
+.btn-outline:hover { background: var(--g50); border-color: var(--g500); }
+
+.btn-ghost {
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 13px; font-family: inherit;
+  padding: 6px 10px; border-radius: 8px;
+  transition: color .15s, background .15s;
+}
+.btn-ghost:hover { color: var(--g700); background: var(--chip-bg); }
+
+/* ════════════════════════════════════════
+   INPUTS
+════════════════════════════════════════ */
+textarea, input[type=text] {
+  font-family: 'Inter', sans-serif;
+  color: var(--ink);
+  background: var(--input-bg);
+  border: 1.8px solid var(--input-border);
+  border-radius: 14px;
+  outline: none;
+  width: 100%;
+  transition: border-color .2s, background .3s;
+}
+textarea:focus, input[type=text]:focus { border-color: var(--g500); }
+textarea { resize: vertical; padding: 16px; font-size: 14px; line-height: 1.7; }
+input[type=text] { padding: 13px 16px; font-size: 14px; }
+
+/* ════════════════════════════════════════
+   PAGE HEADERS
+════════════════════════════════════════ */
+.page-header { margin-bottom: 28px; }
+.page-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--chip-bg); border: 1.5px solid var(--g200);
+  border-radius: 99px; padding: 5px 14px;
+  font-size: 12px; font-weight: 700; color: var(--g700);
+  margin-bottom: 10px;
+}
+.page-title { font-size: 26px; font-weight: 800; color: var(--ink); margin-bottom: 6px; }
+.page-sub { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+/* ════════════════════════════════════════
+   PAGE 1 — QUESTION INPUT
+════════════════════════════════════════ */
+.q-input-wrap {
+  border: 1.8px solid var(--input-border);
+  border-radius: 16px; overflow: hidden; margin-bottom: 20px;
+  transition: border-color .2s;
+}
+.q-input-wrap:focus-within { border-color: var(--g500); }
+.q-input-toolbar {
+  background: var(--surface2);
+  border-bottom: 1.5px solid var(--border);
+  padding: 10px 16px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.q-input-label { font-size: 11px; font-weight: 700; color: var(--g700); text-transform: uppercase; letter-spacing: .06em; }
+#q-textarea {
+  border: none; border-radius: 0; min-height: 180px;
+  background: var(--input-bg);
+}
+#q-textarea:focus { border: none; }
+
+.upload-strip {
+  background: var(--surface2); border: 2px dashed var(--border);
+  border-radius: 14px; padding: 20px;
+  display: flex; align-items: center; gap: 14px; cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.upload-strip:hover { border-color: var(--g500); background: var(--chip-bg); }
+.upload-icon { font-size: 26px; }
+.upload-text { font-size: 13px; color: var(--muted); }
+.upload-text strong { color: var(--ink); display: block; font-size: 14px; }
+
+.subject-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.chip {
+  padding: 7px 16px; border-radius: 99px;
+  border: 1.8px solid var(--border); background: var(--chip-bg);
+  font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer;
+  transition: all .15s;
+}
+.chip:hover, .chip.active { background: var(--g600); color: #fff; border-color: var(--g600); }
+
+.q-options { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+
+/* ════════════════════════════════════════
+   PAGE 2 — AI FACE + COMMUNICATION
+════════════════════════════════════════ */
+.ai-stage {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0; margin-bottom: 28px;
+}
+
+/* AI Avatar Circle */
+.ai-avatar-ring {
+  width: 200px; height: 200px; border-radius: 50%;
+  border: 4px solid var(--g500);
+  box-shadow: 0 0 0 8px rgba(34,197,94,.15), 0 0 0 16px rgba(34,197,94,.07);
+  overflow: hidden; position: relative;
+  background: linear-gradient(135deg, #0A2F14, #164D24);
+  display: flex; align-items: center; justify-content: center;
+}
+.ai-face-svg { width: 130px; height: 130px; }
+
+/* Pulse rings */
+.ai-pulse {
+  position: absolute; inset: -8px; border-radius: 50%;
+  border: 2px solid rgba(34,197,94,.4);
+  animation: pulse-ring 2s ease-out infinite;
+}
+.ai-pulse:nth-child(2) { animation-delay: .6s; }
+.ai-pulse:nth-child(3) { animation-delay: 1.2s; }
+@keyframes pulse-ring {
+  0% { transform: scale(.88); opacity: 1; }
+  100% { transform: scale(1.18); opacity: 0; }
+}
+
+.ai-name { font-size: 18px; font-weight: 800; color: var(--ink); margin: 18px 0 4px; }
+.ai-status {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; color: var(--g700); font-weight: 600;
+}
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--g500);
+  animation: blink 1.4s ease-in-out infinite;
+}
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+
+/* Waveform */
+@keyframes wave { 0%,100% { height: 4px; } 50% { height: 24px; } }
+.waveform { display: flex; align-items: center; gap: 3px; height: 32px; }
+.wv { width: 4px; border-radius: 3px; background: var(--g500); animation: wave 1s ease-in-out infinite; }
+.wv:nth-child(1){animation-delay:0s}
+.wv:nth-child(2){animation-delay:.1s}
+.wv:nth-child(3){animation-delay:.2s}
+.wv:nth-child(4){animation-delay:.3s}
+.wv:nth-child(5){animation-delay:.4s}
+.wv:nth-child(6){animation-delay:.3s}
+.wv:nth-child(7){animation-delay:.2s}
+.wv:nth-child(8){animation-delay:.1s}
+.waveform.paused .wv { animation-play-state: paused; height: 4px; }
+
+/* AI Dialogue bubble */
+.ai-bubble {
+  background: var(--chip-bg);
+  border: 1.8px solid var(--g200);
+  border-radius: 20px 20px 20px 4px;
+  padding: 18px 22px; font-size: 14px;
+  color: var(--ink); line-height: 1.75;
+  max-width: 580px; margin: 20px auto 0;
+}
+
+/* Communication controls */
+.comm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+.comm-card {
+  background: var(--card-bg);
+  border: 1.5px solid var(--border); border-radius: 16px;
+  padding: 20px; display: flex; flex-direction: column;
+  align-items: center; gap: 10px; cursor: pointer;
+  transition: all .2s;
+}
+.comm-card:hover { border-color: var(--g500); box-shadow: 0 0 0 3px rgba(34,197,94,.12); }
+.comm-card.active { border-color: var(--g500); background: var(--chip-bg); box-shadow: 0 0 0 4px rgba(34,197,94,.15); }
+.comm-icon { font-size: 32px; }
+.comm-label { font-size: 14px; font-weight: 700; color: var(--ink); }
+.comm-sub { font-size: 12px; color: var(--muted); text-align: center; }
+
+/* Text reply area */
+.reply-area {
+  background: var(--card-bg); border: 1.5px solid var(--border);
+  border-radius: 16px; padding: 16px; margin-bottom: 16px;
+}
+.reply-area label { font-size: 12px; font-weight: 700; color: var(--g700); display: block; margin-bottom: 8px; }
+.reply-row { display: flex; gap: 10px; }
+.reply-row input { flex: 1; }
+
+/* Video preview */
+.video-preview {
+  background: #0A1A0D; border: 2px solid var(--g700);
+  border-radius: 16px; height: 160px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden; margin-bottom: 16px;
+}
+.video-preview span { font-size: 13px; color: var(--g400); }
+.cam-badge {
+  position: absolute; top: 10px; left: 10px;
+  background: rgba(239,68,68,.85); color: #fff;
+  font-size: 11px; font-weight: 700; padding: 3px 10px;
+  border-radius: 99px; display: flex; align-items: center; gap: 5px;
+}
+
+/* ════════════════════════════════════════
+   PAGE 3 — APPROACHES
+════════════════════════════════════════ */
+.approach-card {
+  background: var(--card-bg); border: 1.5px solid var(--border);
+  border-radius: 18px; padding: 22px 24px;
+  margin-bottom: 16px; transition: all .2s;
+  cursor: pointer;
+}
+.approach-card:hover { border-color: var(--g500); box-shadow: var(--shadow); }
+.approach-card.selected { border-color: var(--g500); background: var(--chip-bg); box-shadow: 0 0 0 4px rgba(34,197,94,.12); }
+.approach-num {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--g600); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px; flex-shrink: 0;
+}
+.approach-header { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.approach-title { font-size: 16px; font-weight: 700; color: var(--ink); }
+.approach-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.approach-body { font-size: 13px; color: var(--ink2); line-height: 1.7; padding-left: 46px; }
+
+.tag {
+  display: inline-flex; align-items: center;
+  padding: 3px 12px; border-radius: 99px;
+  font-size: 11px; font-weight: 700;
+  border: 1.5px solid;
+}
+.tag-green { background: var(--g50); color: var(--g700); border-color: var(--g300); }
+.tag-yellow { background: #FFFBEB; color: #B45309; border-color: #FCD34D; }
+.tag-red { background: #FFF5F5; color: #B91C1C; border-color: #FCA5A5; }
+
+.communication-summary {
+  background: var(--chip-bg); border: 1.8px solid var(--g200);
+  border-radius: 16px; padding: 18px 22px; margin-bottom: 24px;
+}
+.comm-summary-title { font-size: 12px; font-weight: 700; color: var(--g700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+.comm-summary-text { font-size: 14px; color: var(--ink); line-height: 1.7; font-style: italic; }
+
+.timeline {
+  position: relative; padding-left: 28px; margin-bottom: 24px;
+}
+.timeline::before {
+  content: ''; position: absolute; left: 10px; top: 0; bottom: 0;
+  width: 2px; background: var(--g200);
+}
+.tl-item { position: relative; margin-bottom: 18px; }
+.tl-dot {
+  position: absolute; left: -24px; top: 2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--g600); border: 2px solid var(--g300);
+}
+.tl-label { font-size: 11px; font-weight: 700; color: var(--g600); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
+.tl-text { font-size: 13px; color: var(--ink); line-height: 1.65; }
+
+/* ════════════════════════════════════════
+   PAGE 4 — EXACT ANSWER
+════════════════════════════════════════ */
+.answer-hero {
+  background: linear-gradient(135deg, var(--g800), var(--g600));
+  border-radius: 20px; padding: 32px;
+  color: #fff; margin-bottom: 24px;
+  position: relative; overflow: hidden;
+}
+.answer-hero::after {
+  content: ''; position: absolute; right: -30px; top: -30px;
+  width: 160px; height: 160px; border-radius: 50%;
+  background: rgba(255,255,255,.06);
+}
+.answer-hero-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; opacity: .75; margin-bottom: 8px; }
+.answer-hero-text { font-size: 20px; font-weight: 800; line-height: 1.5; }
+.answer-hero-sub { font-size: 13px; opacity: .8; margin-top: 10px; line-height: 1.6; }
+
+.answer-section { margin-bottom: 22px; }
+.answer-section-title { font-size: 13px; font-weight: 700; color: var(--g700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; display: flex; align-items: center; gap: 7px; }
+
+.step-block {
+  display: flex; gap: 16px; align-items: flex-start;
+  background: var(--card-bg); border: 1.5px solid var(--border);
+  border-radius: 14px; padding: 16px 18px; margin-bottom: 10px;
+}
+.step-n {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--g600); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 12px; flex-shrink: 0; margin-top: 1px;
+}
+.step-content { flex: 1; }
+.step-heading { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.step-body { font-size: 13px; color: var(--muted); line-height: 1.65; }
+
+.answer-formula {
+  background: var(--code-bg); color: #A7F3C4;
+  border-radius: 14px; padding: 20px 22px;
+  font-family: 'Courier New', monospace; font-size: 14px;
+  line-height: 1.8; margin-bottom: 16px;
+  border: 1.5px solid rgba(74,222,128,.2);
+}
+
+.insight-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.insight-pill {
+  flex: 1; min-width: 140px;
+  background: var(--chip-bg); border: 1.5px solid var(--g200);
+  border-radius: 14px; padding: 14px 16px; text-align: center;
+}
+.insight-pill .val { font-size: 22px; font-weight: 800; color: var(--g600); }
+.insight-pill .lbl { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+
+.action-bar {
+  display: flex; gap: 10px; justify-content: space-between;
+  flex-wrap: wrap; align-items: center;
+  padding-top: 20px; border-top: 1.5px solid var(--border);
+  margin-top: 24px;
+}
+
+/* ════════════════════════════════════════
+   BOTTOM FIXED BAR
+════════════════════════════════════════ */
+.bottom-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--nav-bg); border-top: 2px solid var(--nav-border);
+  padding: 14px 28px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  z-index: 50; box-shadow: 0 -4px 24px rgba(0,0,0,.08);
+  flex-wrap: wrap;
+  transition: background .3s;
+}
+.bar-info { display: flex; align-items: center; gap: 10px; }
+.bar-step-badge {
+  padding: 5px 14px; border-radius: 99px;
+  background: var(--g600); color: #fff;
+  font-size: 12px; font-weight: 700;
+}
+.bar-text { font-size: 13px; font-weight: 600; color: var(--ink); }
+.bar-actions { display: flex; gap: 8px; }
+
+/* ════════════════════════════════════════
+   SCROLLBAR
+════════════════════════════════════════ */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--g200); border-radius: 99px; }
+
+/* ════════════════════════════════════════
+   RESPONSIVE
+════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .comm-grid { grid-template-columns: 1fr; }
+  .step-trail { display: none; }
+  .container { padding: 24px 14px 120px; }
+  .ai-avatar-ring { width: 150px; height: 150px; }
+  .page-title { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ NAVBAR ══════════════════ -->
+<nav class="nav">
+  <div class="nav-logo">
+    <div class="logo-icon">
+      <svg width="22" height="15" viewBox="0 0 38 22">
+        <circle cx="12" cy="11" r="10" fill="#fff" fill-opacity=".9"/>
+        <circle cx="26" cy="11" r="10" fill="none" stroke="#fff" stroke-width="2.2"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">EchoTwins <span>AI</span></div>
+      <div class="logo-sub">Your Cognitive Learning Partner</div>
+    </div>
+  </div>
+
+  <!-- Step Trail -->
+  <div class="step-trail" id="step-trail">
+    <div class="trail-dot-wrap">
+      <div class="trail-dot active" id="dot1"></div>
+      <span class="trail-label active" id="lbl1">Question</span>
+    </div>
+    <div class="trail-line" id="line1"></div>
+    <div class="trail-dot-wrap">
+      <div class="trail-dot" id="dot2"></div>
+      <span class="trail-label" id="lbl2">AI Session</span>
+    </div>
+    <div class="trail-line" id="line2"></div>
+    <div class="trail-dot-wrap">
+      <div class="trail-dot" id="dot3"></div>
+      <span class="trail-label" id="lbl3">Approaches</span>
+    </div>
+    <div class="trail-line" id="line3"></div>
+    <div class="trail-dot-wrap">
+      <div class="trail-dot" id="dot4"></div>
+      <span class="trail-label" id="lbl4">Answer</span>
+    </div>
+  </div>
+
+  <div class="nav-right">
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+      <div class="theme-toggle-ball" id="theme-ball">☀️</div>
+    </button>
+  </div>
+</nav>
+
+
+<!-- ══════════════════════════════════════════
+     PAGE 1 — QUESTION INPUT
+══════════════════════════════════════════ -->
+<div class="page active" id="page1">
+<div class="container">
+
+  <div class="page-header">
+    <div class="page-badge">📝 Step 1 of 4</div>
+    <h1 class="page-title">What's your question?</h1>
+    <p class="page-sub">Type or paste any question — maths, science, history, logic, anything. Your AI twin will guide you step by step to understand and solve it.</p>
+  </div>
+
+  <!-- Question Input -->
+  <div class="card card-green" style="margin-bottom:20px">
+    <div class="q-input-wrap">
+      <div class="q-input-toolbar">
+        <span class="q-input-label">📝 Your Question</span>
+        <button class="btn-ghost" onclick="document.getElementById('q-textarea').value=''">Clear ✕</button>
+      </div>
+      <textarea id="q-textarea" rows="6" placeholder="Type your question here…
+
+e.g. 'A train travels 120 km at 60 km/h and returns at 40 km/h. What is the average speed for the whole journey?'
+
+Or paste any textbook question, exam problem, or concept you are confused about."></textarea>
+    </div>
+
+    <!-- Upload option -->
+    <div class="upload-strip" onclick="document.getElementById('img-upload').click()">
+      <div class="upload-icon">📷</div>
+      <div class="upload-text">
+        <strong>Upload a photo of your question</strong>
+        Click to upload an image of a textbook page, screenshot, or handwritten note
+      </div>
+      <input type="file" id="img-upload" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
+    </div>
+
+    <!-- Subject category chips -->
+    <div style="margin-top:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--g700);margin-bottom:10px">📚 Category (optional):</div>
+      <div class="subject-chips">
+        <div class="chip" onclick="selectChip(this)">🔢 Mathematics</div>
+        <div class="chip" onclick="selectChip(this)">⚡ Physics</div>
+        <div class="chip" onclick="selectChip(this)">⚗️ Chemistry</div>
+        <div class="chip" onclick="selectChip(this)">🌿 Biology</div>
+        <div class="chip" onclick="selectChip(this)">📖 History</div>
+        <div class="chip" onclick="selectChip(this)">🌍 Geography</div>
+        <div class="chip" onclick="selectChip(this)">💡 General Knowledge</div>
+        <div class="chip" onclick="selectChip(this)">📐 Engineering</div>
+        <div class="chip" onclick="selectChip(this)">💼 Economics</div>
+        <div class="chip" onclick="selectChip(this)">🤔 Logic / Puzzles</div>
+      </div>
+    </div>
+
+    <!-- Options row -->
+    <div class="q-options">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;font-weight:600;color:var(--muted)">Difficulty:</span>
+        <button class="chip" style="border-radius:99px;padding:6px 16px;font-size:12px" onclick="selectDiff(this,'easy')">😊 Easy</button>
+        <button class="chip active" style="border-radius:99px;padding:6px 16px;font-size:12px" onclick="selectDiff(this,'medium')">🎯 Medium</button>
+        <button class="chip" style="border-radius:99px;padding:6px 16px;font-size:12px" onclick="selectDiff(this,'hard')">🔥 Hard</button>
+      </div>
+      <button class="btn-primary" onclick="goToPage(2)">
+        Start AI Session →
+      </button>
+    </div>
+  </div>
+
+  <!-- Info callout -->
+  <div style="background:var(--chip-bg);border:1.8px solid var(--g200);border-radius:16px;padding:18px 22px;display:flex;gap:14px;align-items:flex-start">
+    <span style="font-size:24px;flex-shrink:0">🤖</span>
+    <div>
+      <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px">How it works</div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.65;margin:0">Your AI twin reads your question, then opens a live interactive session — you can speak or type your thoughts. It analyses how you're thinking, shows you multiple approaches, and finally delivers the exact answer with a full explanation.</p>
+    </div>
+  </div>
+
+</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     PAGE 2 — AI FACE + AUDIO/VIDEO SESSION
+══════════════════════════════════════════ -->
+<div class="page" id="page2">
+<div class="container">
+
+  <div class="page-header">
+    <div class="page-badge">🤖 Step 2 of 4</div>
+    <h1 class="page-title">AI Session — Talk to Your Twin</h1>
+    <p class="page-sub">Your EchoTwins AI has read your question. Communicate via voice or text — share how you're thinking about it.</p>
+  </div>
+
+  <!-- Question recap -->
+  <div style="background:var(--chip-bg);border:1.8px solid var(--g200);border-radius:14px;padding:14px 20px;margin-bottom:24px;display:flex;gap:12px;align-items:flex-start">
+    <span style="font-size:18px;flex-shrink:0">📌</span>
+    <div>
+      <div style="font-size:11px;font-weight:700;color:var(--g700);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Your Question:</div>
+      <div id="q-recap" style="font-size:13px;color:var(--ink);line-height:1.65;font-style:italic">(your question will appear here)</div>
+    </div>
+  </div>
+
+  <!-- AI Avatar -->
+  <div class="ai-stage">
+    <div style="position:relative;display:inline-block">
+      <div class="ai-pulse"></div>
+      <div class="ai-pulse" style="animation-delay:.6s"></div>
+      <div class="ai-avatar-ring" id="avatar-ring">
+        <!-- AI Face SVG -->
+        <svg class="ai-face-svg" viewBox="0 0 130 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Head -->
+          <circle cx="65" cy="65" r="54" fill="#0D2F18" stroke="#22C55E" stroke-width="2"/>
+          <!-- Neural circuit lines -->
+          <line x1="25" y1="65" x2="105" y2="65" stroke="#22C55E" stroke-width=".5" stroke-opacity=".3"/>
+          <line x1="65" y1="25" x2="65" y2="105" stroke="#22C55E" stroke-width=".5" stroke-opacity=".3"/>
+          <circle cx="65" cy="65" r="30" stroke="#22C55E" stroke-width=".5" stroke-opacity=".2" stroke-dasharray="4 4"/>
+          <!-- Eyes -->
+          <rect x="42" y="50" width="16" height="10" rx="5" fill="#22C55E" id="left-eye"/>
+          <rect x="72" y="50" width="16" height="10" rx="5" fill="#22C55E" id="right-eye"/>
+          <!-- Eye glow -->
+          <rect x="42" y="50" width="16" height="10" rx="5" fill="#4ADE80" opacity=".5" filter="url(#glow)"/>
+          <rect x="72" y="50" width="16" height="10" rx="5" fill="#4ADE80" opacity=".5" filter="url(#glow)"/>
+          <!-- Nose dot -->
+          <circle cx="65" cy="68" r="2" fill="#16A34A"/>
+          <!-- Mouth -->
+          <path d="M52 80 Q65 90 78 80" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" fill="none" id="ai-mouth"/>
+          <!-- Ear indicators -->
+          <rect x="10" y="58" width="10" height="14" rx="5" fill="#16A34A" opacity=".6"/>
+          <rect x="110" y="58" width="10" height="14" rx="5" fill="#16A34A" opacity=".6"/>
+          <!-- Top sensor -->
+          <circle cx="65" cy="12" r="5" fill="#22C55E" opacity=".8"/>
+          <line x1="65" y1="17" x2="65" y2="30" stroke="#22C55E" stroke-width="1.5" opacity=".5"/>
+          <defs>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+        </svg>
+      </div>
+    </div>
+    <div class="ai-name">EchoTwins AI</div>
+    <div class="ai-status">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="ai-status-txt">Listening to your thoughts…</span>
+    </div>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+      <div class="waveform" id="waveform">
+        <div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div>
+        <div class="wv"></div><div class="wv"></div><div class="wv"></div><div class="wv"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI dialogue -->
+  <div class="ai-bubble" id="ai-bubble">
+    💬 <strong>Hello!</strong> I've read your question carefully. Before I guide you to the answer, I want to understand how you're thinking about this.<br><br>
+    <em>What's your first instinct — how would you approach this problem? Don't worry about being wrong!</em>
+  </div>
+
+  <!-- Communication Options -->
+  <div style="font-size:13px;font-weight:700;color:var(--g700);margin:22px 0 12px">🎯 Choose how to communicate:</div>
+  <div class="comm-grid">
+    <div class="comm-card active" id="comm-audio" onclick="selectComm('audio')">
+      <div class="comm-icon">🎤</div>
+      <div class="comm-label">Voice / Audio</div>
+      <div class="comm-sub">Speak your thoughts aloud. AI listens and responds.</div>
+      <div id="audio-status" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--g600);font-weight:600">
+        <span style="width:7px;height:7px;border-radius:50%;background:#EF4444;display:inline-block"></span>
+        Microphone active
+      </div>
+    </div>
+    <div class="comm-card" id="comm-video" onclick="selectComm('video')">
+      <div class="comm-icon">📹</div>
+      <div class="comm-label">Video Call</div>
+      <div class="comm-sub">Enable camera for face-to-face AI interaction.</div>
+      <div id="video-status" style="font-size:12px;color:var(--muted);font-weight:600">Click to enable camera</div>
+    </div>
+  </div>
+
+  <!-- Video preview (hidden initially) -->
+  <div class="video-preview" id="video-preview" style="display:none">
+    <div class="cam-badge"><span>●</span> LIVE</div>
+    <span>📷 Camera feed would appear here in a production environment</span>
+  </div>
+
+  <!-- Text reply -->
+  <div class="reply-area">
+    <label>📩 Type your response to the AI:</label>
+    <div class="reply-row">
+      <input type="text" id="p2-reply" placeholder="Share how you're thinking about this question…">
+      <button class="btn-primary" onclick="sendAIReply()" style="padding:13px 20px;flex-shrink:0">Send ↑</button>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <button class="btn-outline" onclick="goToPage(1)">← Back</button>
+    <button class="btn-primary" onclick="goToPage(3)">See Approaches →</button>
+  </div>
+
+</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     PAGE 3 — APPROACHES
+══════════════════════════════════════════ -->
+<div class="page" id="page3">
+<div class="container">
+
+  <div class="page-header">
+    <div class="page-badge">💡 Step 3 of 4</div>
+    <h1 class="page-title">How to Solve This</h1>
+    <p class="page-sub">Based on what you shared, here are the best approaches to solve your question — from simplest to most elegant.</p>
+  </div>
+
+  <!-- Communication summary -->
+  <div class="communication-summary">
+    <div class="comm-summary-title">💬 What You Shared in the Session</div>
+    <div class="comm-summary-text" id="session-summary">
+      "I think I need to find the average speed for the whole journey… maybe just add the two speeds and divide by 2? But I'm not sure if that's right when the distances are the same."
+    </div>
+  </div>
+
+  <!-- AI Analysis -->
+  <div style="background:var(--card-bg);border:1.5px solid var(--border);border-radius:18px;padding:22px 24px;margin-bottom:24px">
+    <div class="answer-section-title">🧠 AI Analysis of Your Thinking</div>
+    <div class="timeline" id="ai-timeline">
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-label">✅ Good Instinct</div>
+        <div class="tl-text">You correctly identified this as an average speed problem — that's the right starting point!</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-label">⚠️ Common Trap</div>
+        <div class="tl-text">Simply averaging the two speeds (60+40)/2 = 50 only works when time is equal, not distance. Since time differs here, this gives the wrong answer.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-label">🎯 Key Insight Needed</div>
+        <div class="tl-text">Average speed = Total Distance ÷ Total Time. You need to calculate the actual time taken for each part of the journey first.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Approaches -->
+  <div class="answer-section-title">📐 Approaches (Select to explore)</div>
+
+  <div class="approach-card selected" onclick="selectApproach(this)" id="approach1">
+    <div class="approach-header">
+      <div class="approach-num">1</div>
+      <div>
+        <div class="approach-title">Direct Formula Method</div>
+        <div class="approach-meta">
+          <span class="tag tag-green" style="margin-right:6px">⭐ Recommended</span>
+          <span class="tag tag-green">Fastest</span>
+        </div>
+      </div>
+    </div>
+    <div class="approach-body">
+      Use the harmonic mean formula for average speed when <strong>distance is equal</strong> in both legs:<br>
+      Average Speed = <strong>2ab / (a+b)</strong>, where a and b are the two speeds.<br>
+      This directly gives the correct answer without computing time separately.
+    </div>
+  </div>
+
+  <div class="approach-card" onclick="selectApproach(this)" id="approach2">
+    <div class="approach-header">
+      <div class="approach-num">2</div>
+      <div>
+        <div class="approach-title">Step-by-Step Time Calculation</div>
+        <div class="approach-meta">
+          <span class="tag tag-yellow" style="margin-right:6px">📚 Conceptual</span>
+          <span class="tag tag-yellow">Best for Understanding</span>
+        </div>
+      </div>
+    </div>
+    <div class="approach-body">
+      1. Assume a total distance (say, D km each way).<br>
+      2. Calculate time for each leg: Time = Distance ÷ Speed.<br>
+      3. Total time = time going + time returning.<br>
+      4. Average speed = Total distance ÷ Total time.<br>
+      This builds full understanding of why the formula works.
+    </div>
+  </div>
+
+  <div class="approach-card" onclick="selectApproach(this)" id="approach3">
+    <div class="approach-header">
+      <div class="approach-num">3</div>
+      <div>
+        <div class="approach-title">Algebraic Proof Approach</div>
+        <div class="approach-meta">
+          <span class="tag tag-red" style="margin-right:6px">🔥 Advanced</span>
+          <span class="tag tag-red">Deep Understanding</span>
+        </div>
+      </div>
+    </div>
+    <div class="approach-body">
+      Let D = one-way distance. Express time for each leg symbolically, substitute into the average speed formula, simplify algebraically to derive the harmonic mean. This proves <em>why</em> the simple average doesn't work and when it does.
+    </div>
+  </div>
+
+  <!-- Why simple average fails -->
+  <div style="background:var(--chip-bg);border:1.8px solid var(--g200);border-radius:16px;padding:18px 22px;margin-top:20px">
+    <div style="font-size:12px;font-weight:700;color:var(--g700);margin-bottom:8px">💡 Why simple average fails here</div>
+    <p style="font-size:13px;color:var(--ink);line-height:1.7;margin:0">Because the train spends <strong>more time</strong> at the slower speed (40 km/h) than at the faster speed (60 km/h), the slower leg "weighs" more in the total time. Simple average (50) ignores this time imbalance. The harmonic mean accounts for it correctly.</p>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:24px">
+    <button class="btn-outline" onclick="goToPage(2)">← Back to Session</button>
+    <button class="btn-primary" onclick="goToPage(4)">See Exact Answer →</button>
+  </div>
+
+</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     PAGE 4 — EXACT ANSWER
+══════════════════════════════════════════ -->
+<div class="page" id="page4">
+<div class="container">
+
+  <div class="page-header">
+    <div class="page-badge">✅ Step 4 of 4</div>
+    <h1 class="page-title">Exact Answer</h1>
+    <p class="page-sub">Complete solution with every step shown — no shortcuts, full explanation.</p>
+  </div>
+
+  <!-- Answer Hero -->
+  <div class="answer-hero">
+    <div class="answer-hero-label">✅ Final Answer</div>
+    <div class="answer-hero-text" id="final-answer">Average Speed = 48 km/h</div>
+    <div class="answer-hero-sub" id="final-context">The average speed for the entire round trip is <strong>48 km/h</strong> — not 50, because the train spends more time travelling at the slower speed.</div>
+  </div>
+
+  <!-- Key values -->
+  <div class="insight-row">
+    <div class="insight-pill">
+      <div class="val">120 km</div>
+      <div class="lbl">One-way distance</div>
+    </div>
+    <div class="insight-pill">
+      <div class="val">60 km/h</div>
+      <div class="lbl">Outward speed</div>
+    </div>
+    <div class="insight-pill">
+      <div class="val">40 km/h</div>
+      <div class="lbl">Return speed</div>
+    </div>
+    <div class="insight-pill">
+      <div class="val" style="color:#EF4444">48 km/h</div>
+      <div class="lbl">Average speed ✓</div>
+    </div>
+  </div>
+
+  <!-- Step-by-step -->
+  <div class="answer-section">
+    <div class="answer-section-title">📐 Step-by-Step Solution</div>
+
+    <div class="step-block">
+      <div class="step-n">1</div>
+      <div class="step-content">
+        <div class="step-heading">Find time for outward journey</div>
+        <div class="step-body">Distance = 120 km, Speed = 60 km/h<br>
+        Time₁ = 120 ÷ 60 = <strong>2 hours</strong></div>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-n">2</div>
+      <div class="step-content">
+        <div class="step-heading">Find time for return journey</div>
+        <div class="step-body">Distance = 120 km, Speed = 40 km/h<br>
+        Time₂ = 120 ÷ 40 = <strong>3 hours</strong></div>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-n">3</div>
+      <div class="step-content">
+        <div class="step-heading">Calculate totals</div>
+        <div class="step-body">Total Distance = 120 + 120 = <strong>240 km</strong><br>
+        Total Time = 2 + 3 = <strong>5 hours</strong></div>
+      </div>
+    </div>
+
+    <div class="step-block" style="border-color:var(--g500);background:var(--chip-bg)">
+      <div class="step-n" style="background:var(--g500)">4</div>
+      <div class="step-content">
+        <div class="step-heading" style="color:var(--g700)">Apply Average Speed formula</div>
+        <div class="step-body">Average Speed = Total Distance ÷ Total Time<br>
+        Average Speed = 240 ÷ 5 = <strong style="color:var(--g600);font-size:15px">48 km/h ✓</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formula shortcut -->
+  <div class="answer-section">
+    <div class="answer-section-title">⚡ Formula Shortcut (for equal distances)</div>
+    <div class="answer-formula">
+Average Speed = (2 × a × b) / (a + b)
+             = (2 × 60 × 40) / (60 + 40)
+             = 4800 / 100
+             = <strong style="color:#4ADE80">48 km/h ✓</strong>
+
+This is the Harmonic Mean formula — use it whenever
+distances for both legs are equal.
+    </div>
+  </div>
+
+  <!-- Verification check -->
+  <div style="background:var(--card-bg);border:1.8px solid var(--g300);border-radius:16px;padding:20px 22px;margin-bottom:20px">
+    <div class="answer-section-title">🔍 Verification</div>
+    <p style="font-size:13px;color:var(--ink);line-height:1.7;margin:0">
+      <strong>Check:</strong> If average speed = 48 km/h for 5 hours → total distance = 48 × 5 = 240 km ✓<br>
+      This matches our total (120 + 120 = 240), confirming the answer is correct.
+    </p>
+  </div>
+
+  <!-- Key takeaways -->
+  <div style="background:var(--chip-bg);border:1.8px solid var(--g200);border-radius:16px;padding:20px 22px;margin-bottom:24px">
+    <div class="answer-section-title">🎓 Key Takeaways</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="color:var(--g600);font-size:16px;flex-shrink:0">✅</span>
+        <span style="font-size:13px;color:var(--ink);line-height:1.65">Average speed ≠ arithmetic mean of speeds (unless time is equal for both legs)</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="color:var(--g600);font-size:16px;flex-shrink:0">✅</span>
+        <span style="font-size:13px;color:var(--ink);line-height:1.65">When distances are equal, use harmonic mean: 2ab/(a+b)</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="color:var(--g600);font-size:16px;flex-shrink:0">✅</span>
+        <span style="font-size:13px;color:var(--ink);line-height:1.65">Always verify: (average speed) × (total time) must equal total distance</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action bar -->
+  <div class="action-bar">
+    <button class="btn-outline" onclick="goToPage(3)">← Review Approaches</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn-outline" onclick="copyAnswer()">📋 Copy Answer</button>
+      <button class="btn-primary" onclick="solveNew()">✨ Solve New Question →</button>
+    </div>
+  </div>
+
+</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     BOTTOM BAR
+══════════════════════════════════════════ -->
+<div class="bottom-bar">
+  <div class="bar-info">
+    <span class="bar-step-badge" id="bar-badge">Step 1</span>
+    <span class="bar-text" id="bar-text">Write your question to begin</span>
+  </div>
+  <div class="bar-actions">
+    <button class="btn-outline" style="padding:8px 16px;font-size:12px" onclick="solveNew()">🔄 Start Over</button>
+    <button class="btn-primary" style="padding:9px 20px;font-size:12px" id="bar-cta" onclick="goToPage(2)">Start AI Session →</button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════ -->
+<script>
+/* ── STATE ── */
+let currentPage = 1;
+const totalPages = 4;
+
+/* ── THEME ── */
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-ball').textContent = isDark ? '☀️' : '🌙';
+}
+
+/* ── PAGE NAVIGATION ── */
+function goToPage(n) {
+  // Validate page 1 → 2 transition
+  if (n === 2 && currentPage === 1) {
+    const q = document.getElementById('q-textarea').value.trim();
+    if (!q) {
+      const ta = document.getElementById('q-textarea');
+      ta.style.borderColor = '#EF4444';
+      ta.focus();
+      ta.placeholder = '⚠️ Please enter your question first!';
+      setTimeout(() => {
+        ta.style.borderColor = '';
+        ta.placeholder = 'Type your question here…\n\ne.g. …';
+      }, 2500);
+      return;
+    }
+    // Populate recap
+    document.getElementById('q-recap').textContent = q;
+    // Generate dynamic AI response based on question
+    updateAIBubble(q);
+    // Populate session summary on page 3
+    document.getElementById('session-summary').textContent =
+      '"My question is about: ' + q.substring(0, 120) + (q.length > 120 ? '…' : '') + '"';
+  }
+
+  // Update page visibility
+  for (let i = 1; i <= totalPages; i++) {
+    document.getElementById('page' + i).classList.toggle('active', i === n);
+  }
+  currentPage = n;
+  updateTrail(n);
+  updateBottomBar(n);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateAIBubble(question) {
+  const bubble = document.getElementById('ai-bubble');
+  const lower = question.toLowerCase();
+  let msg = '';
+  if (lower.includes('speed') || lower.includes('distance') || lower.includes('time')) {
+    msg = '💬 <strong>I can see this is a speed/distance/time problem!</strong> Interesting — these often trip people up with averages.<br><br>Before I guide you, tell me: <em>What formula do you think applies here? And what exactly is being asked?</em>';
+  } else if (lower.includes('force') || lower.includes('newton') || lower.includes('mass') || lower.includes('acceleration')) {
+    msg = '💬 <strong>This looks like a Newton\'s Laws / mechanics problem!</strong><br><br>Let me ask first: <em>Which forces do you think are acting on the object? Can you draw a rough free-body diagram in your mind?</em>';
+  } else if (lower.includes('area') || lower.includes('volume') || lower.includes('perimeter')) {
+    msg = '💬 <strong>This is a geometry / mensuration question!</strong><br><br>My first question: <em>What shape or figure is involved, and what formula do you recall for it?</em>';
+  } else if (lower.includes('probability') || lower.includes('chance') || lower.includes('random')) {
+    msg = '💬 <strong>Probability problems — I love these!</strong><br><br>Tell me: <em>What are the possible outcomes? How many total outcomes can occur?</em>';
+  } else {
+    msg = '💬 <strong>I\'ve read your question carefully!</strong> Before I guide you to the answer, I want to understand your thinking.<br><br><em>What\'s your first instinct — how would you begin to approach this? Don\'t worry about being right!</em>';
+  }
+  bubble.innerHTML = msg;
+}
+
+/* ── PROGRESS TRAIL ── */
+function updateTrail(n) {
+  for (let i = 1; i <= 4; i++) {
+    const dot = document.getElementById('dot' + i);
+    const lbl = document.getElementById('lbl' + i);
+    dot.className = 'trail-dot' + (i < n ? ' done' : i === n ? ' active' : '');
+    lbl.className = 'trail-label' + (i === n ? ' active' : '');
+    if (i < 4) {
+      document.getElementById('line' + i).className = 'trail-line' + (i < n ? ' done' : '');
+    }
+  }
+}
+
+/* ── BOTTOM BAR ── */
+function updateBottomBar(n) {
+  const badges = ['Step 1', 'Step 2', 'Step 3', 'Step 4'];
+  const texts = [
+    'Write your question to begin',
+    'Communicate with your AI twin',
+    'Review the solving approaches',
+    'Your exact answer is ready!'
+  ];
+  const ctas = ['Start AI Session →', 'See Approaches →', 'See Exact Answer →', 'Solve New Question →'];
+  const ctaActions = [() => goToPage(2), () => goToPage(3), () => goToPage(4), solveNew];
+
+  document.getElementById('bar-badge').textContent = badges[n - 1];
+  document.getElementById('bar-text').textContent = texts[n - 1];
+  const btn = document.getElementById('bar-cta');
+  btn.textContent = ctas[n - 1];
+  btn.onclick = ctaActions[n - 1];
+}
+
+/* ── SUBJECT CHIPS ── */
+function selectChip(el) {
+  document.querySelectorAll('.subject-chips .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+/* ── DIFFICULTY ── */
+function selectDiff(el, level) {
+  document.querySelectorAll('.q-options .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+/* ── IMAGE UPLOAD ── */
+function handleImageUpload(input) {
+  if (input.files && input.files[0]) {
+    const name = input.files[0].name;
+    document.querySelector('.upload-text').innerHTML =
+      '<strong>✅ Image uploaded: ' + name + '</strong>AI will extract the question from this image.';
+  }
+}
+
+/* ── COMMUNICATION ── */
+let commMode = 'audio';
+function selectComm(mode) {
+  commMode = mode;
+  document.getElementById('comm-audio').classList.toggle('active', mode === 'audio');
+  document.getElementById('comm-video').classList.toggle('active', mode === 'video');
+  const vidPreview = document.getElementById('video-preview');
+  vidPreview.style.display = mode === 'video' ? 'flex' : 'none';
+  document.getElementById('video-status').textContent =
+    mode === 'video' ? '📷 Camera active' : 'Click to enable camera';
+  document.getElementById('ai-status-txt').textContent =
+    mode === 'video' ? 'Video session active…' : 'Listening to your thoughts…';
+}
+
+/* ── AI REPLY ── */
+const aiResponses = [
+  "That's a thoughtful answer! Now let me probe deeper — <em>what formula would connect those variables?</em>",
+  "Good thinking! You're on the right track. <em>Can you tell me what happens to the result if we change just one of those values?</em>",
+  "Interesting! I see you're approaching it from that angle. <em>What would change if the conditions were slightly different?</em>",
+  "Excellent reasoning! You've spotted a key part of the problem. <em>Now — how do we put all those pieces together?</em>",
+  "Perfect! That's exactly the insight needed. Click 'See Approaches' to explore the full solution path! 🎉"
+];
+let replyCount = 0;
+
+function sendAIReply() {
+  const inp = document.getElementById('p2-reply');
+  const reply = inp.value.trim();
+  if (!reply) return;
+
+  const bubble = document.getElementById('ai-bubble');
+  const waveform = document.getElementById('waveform');
+
+  // Animate the AI "thinking"
+  document.getElementById('ai-status-txt').textContent = 'Processing your answer…';
+  waveform.classList.remove('paused');
+  bubble.style.opacity = '.4';
+
+  setTimeout(() => {
+    const idx = replyCount % aiResponses.length;
+    bubble.innerHTML = '💬 ' + aiResponses[idx];
+    bubble.style.opacity = '1';
+    document.getElementById('ai-status-txt').textContent = 'Listening to your thoughts…';
+    replyCount++;
+    // Update session summary on page 3
+    document.getElementById('session-summary').textContent =
+      '"' + reply.substring(0, 200) + (reply.length > 200 ? '…' : '') + '"';
+  }, 1200);
+
+  inp.value = '';
+}
+
+/* ── APPROACH SELECTION ── */
+function selectApproach(el) {
+  document.querySelectorAll('.approach-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+/* ── COPY ANSWER ── */
+function copyAnswer() {
+  const answer = document.getElementById('final-answer').textContent;
+  const context = document.getElementById('final-context').textContent;
+  navigator.clipboard.writeText(answer + '\n' + context).then(() => {
+    alert('✅ Answer copied to clipboard!');
+  }).catch(() => {
+    alert('Answer: ' + answer);
+  });
+}
+
+/* ── SOLVE NEW ── */
+function solveNew() {
+  document.getElementById('q-textarea').value = '';
+  document.getElementById('p2-reply').value = '';
+  replyCount = 0;
+  goToPage(1);
+}
+
+/* ── ENTER KEY ON REPLY ── */
+document.getElementById('p2-reply').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') sendAIReply();
+});
+
+/* ── INIT ── */
+updateTrail(1);
+updateBottomBar(1);
+</script>
+</body>
+</html>
+
