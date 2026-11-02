@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EchoTwins AI — Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --g400:#4ADE80; --g500:#22C55E; --g600:#16A34A; --g700:#15803D; --g800:#166534;
+}
+[data-theme="dark"] {
+  --bg: #060D08; --surface: #0D1F10; --surface2: #111F14;
+  --border: #1A3320; --ink: #E8F5EC; --ink2: #B6DFC0; --muted: #5E8F6E;
+  --card: #0F1C12; --shadow: 0 4px 32px rgba(0,0,0,.6);
+}
+[data-theme="light"] {
+  --bg: #F0FDF4; --surface: #fff; --surface2: #F0FDF4;
+  --border: #C6E8CC; --ink: #0F2517; --ink2: #1E4D2B; --muted: #4B7A59;
+  --card: #fff; --shadow: 0 4px 24px rgba(22,163,74,.1);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg); color: var(--ink);
+  min-height: 100vh; -webkit-font-smoothing: antialiased;
+  transition: background .3s, color .3s;
+}
+
+/* ── NAV ── */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--surface); border-bottom: 2px solid var(--border);
+  height: 64px; display: flex; align-items: center;
+  justify-content: space-between; padding: 0 28px;
+  box-shadow: var(--shadow);
+}
+.nav-logo { display: flex; align-items: center; gap: 12px; }
+.logo-icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  background: linear-gradient(135deg,#166534,#22C55E);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; box-shadow: 0 4px 12px rgba(22,163,74,.4);
+}
+.logo-text { font-size: 18px; font-weight: 800; color: var(--ink); }
+.logo-text span { color: var(--g500); }
+.logo-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.nav-right { display: flex; align-items: center; gap: 10px; }
+.btn {
+  padding: 8px 16px; border-radius: 10px; font-size: 13px;
+  font-weight: 700; cursor: pointer; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all .15s;
+}
+.btn-green { background: linear-gradient(135deg,var(--g700),var(--g500)); color: #fff; border: none; box-shadow: 0 3px 10px rgba(22,163,74,.35); }
+.btn-green:hover { opacity: .9; transform: translateY(-1px); }
+.btn-outline { background: var(--surface); border: 1.5px solid var(--border); color: var(--ink); text-decoration: none; }
+.btn-outline:hover { border-color: var(--g500); }
+.theme-toggle {
+  width: 44px; height: 24px; border-radius: 12px;
+  background: var(--border); border: none; cursor: pointer; position: relative;
+}
+[data-theme="dark"] .theme-toggle { background: var(--g600); }
+.theme-toggle-ball {
+  width: 18px; height: 18px; border-radius: 50%; background: #fff;
+  position: absolute; top: 3px; left: 3px; transition: transform .3s;
+  display: flex; align-items: center; justify-content: center; font-size: 10px;
+}
+[data-theme="dark"] .theme-toggle-ball { transform: translateX(20px); }
+
+/* ── MAIN ── */
+.main { padding: 32px 28px 60px; max-width: 1200px; margin: 0 auto; }
+
+/* ── LOCK SCREEN ── */
+.lock-screen {
+  min-height: calc(100vh - 64px);
+  display: flex; align-items: center; justify-content: center;
+}
+.lock-card {
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 24px; padding: 48px 40px;
+  width: 100%; max-width: 400px; text-align: center;
+  box-shadow: var(--shadow);
+}
+.lock-icon { font-size: 56px; margin-bottom: 16px; }
+.lock-title { font-size: 22px; font-weight: 800; color: var(--ink); margin-bottom: 8px; }
+.lock-sub { font-size: 14px; color: var(--muted); margin-bottom: 28px; line-height: 1.6; }
+.lock-input {
+  width: 100%; padding: 13px 16px; border-radius: 12px;
+  border: 1.8px solid var(--border); background: var(--surface2);
+  font-family: inherit; font-size: 15px; color: var(--ink);
+  text-align: center; letter-spacing: 4px; margin-bottom: 14px;
+  outline: none;
+}
+.lock-input:focus { border-color: var(--g500); }
+.lock-error { font-size: 13px; color: #EF4444; margin-top: 8px; }
+
+/* ── STATS ROW ── */
+.stats-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 16px; margin-bottom: 28px;
+}
+.stat-box {
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 16px; padding: 20px 22px; box-shadow: var(--shadow);
+}
+.stat-icon { font-size: 26px; margin-bottom: 10px; }
+.stat-val { font-size: 28px; font-weight: 800; color: var(--g500); line-height: 1; }
+.stat-lbl { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 4px; }
+
+/* ── TABLE CARD ── */
+.table-card {
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 20px; overflow: hidden; box-shadow: var(--shadow);
+  margin-bottom: 24px;
+}
+.table-header {
+  padding: 20px 24px; display: flex; align-items: center;
+  justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  border-bottom: 1.5px solid var(--border);
+}
+.table-title { font-size: 16px; font-weight: 800; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+.search-input {
+  padding: 8px 14px; border-radius: 10px;
+  border: 1.5px solid var(--border); background: var(--surface2);
+  font-family: inherit; font-size: 13px; color: var(--ink);
+  outline: none; min-width: 220px;
+}
+.search-input:focus { border-color: var(--g500); }
+
+/* ── TABLE ── */
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th {
+  padding: 12px 18px; text-align: left;
+  font-size: 11px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .06em;
+  background: var(--surface2); border-bottom: 1.5px solid var(--border);
+}
+.tbl td {
+  padding: 14px 18px; font-size: 13px; color: var(--ink);
+  border-bottom: 1px solid var(--border);
+}
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tbody tr { transition: background .12s; }
+.tbl tbody tr:hover { background: var(--surface2); }
+
+.student-cell { display: flex; align-items: center; gap: 10px; }
+.avatar-sm {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--g700), var(--g500));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 800; color: #fff; flex-shrink: 0;
+}
+.student-name { font-weight: 700; color: var(--ink); }
+.student-email { font-size: 11px; color: var(--muted); }
+
+.badge-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 99px;
+  font-size: 11px; font-weight: 700; border: 1px solid;
+}
+.pill-green { background: #F0FDF4; color: var(--g700); border-color: #BBF7D0; }
+.pill-blue  { background: #EFF6FF; color: #1D4ED8; border-color: #BFDBFE; }
+.pill-gray  { background: var(--surface2); color: var(--muted); border-color: var(--border); }
+[data-theme="dark"] .pill-green { background: #0F2517; border-color: #1A4028; color: var(--g400); }
+[data-theme="dark"] .pill-blue  { background: #0C1628; border-color: #1E3A5F; color: #60A5FA; }
+
+.no-data {
+  text-align: center; padding: 60px 20px; color: var(--muted); font-size: 14px;
+}
+.no-data .icon { font-size: 48px; margin-bottom: 12px; }
+
+/* ── DELETE BTN ── */
+.del-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 15px; padding: 4px 8px;
+  border-radius: 6px; transition: color .15s, background .15s;
+}
+.del-btn:hover { color: #EF4444; background: #FFF5F5; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: var(--g700); color: #fff; padding: 12px 24px; border-radius: 99px;
+  font-size: 14px; font-weight: 600; z-index: 999; transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── RESP ── */
+@media (max-width: 768px) {
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .main { padding: 20px 14px 60px; }
+  .tbl th:nth-child(n+4), .tbl td:nth-child(n+4) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">
+    <div class="logo-icon">🛡️</div>
+    <div>
+      <div class="logo-text">EchoTwins <span>Admin</span></div>
+      <div class="logo-sub">Student Database Panel</div>
+    </div>
+  </div>
+  <div class="nav-right" id="nav-right" style="display:none">
+    <a href="dashboard.html" class="btn btn-outline">📊 Dashboard</a>
+    <a href="login.html"     class="btn btn-outline">🔑 Login Page</a>
+    <button class="btn btn-green" onclick="loadStudents()">🔄 Refresh</button>
+    <button class="btn btn-green" onclick="exportCSV()">📥 Export CSV</button>
+    <button class="theme-toggle" onclick="toggleTheme()">
+      <div class="theme-toggle-ball" id="theme-ball">🌙</div>
+    </button>
+  </div>
+</nav>
+
+<!-- LOCK SCREEN -->
+<div class="lock-screen" id="lock-screen">
+  <div class="lock-card">
+    <div class="lock-icon">🛡️</div>
+    <div class="lock-title">Admin Access</div>
+    <div class="lock-sub">Enter the admin password to view all student records.</div>
+    <input type="password" class="lock-input" id="admin-pass" placeholder="••••••••••"
+      onkeydown="if(event.key==='Enter') unlock()">
+    <button class="btn btn-green" style="width:100%;justify-content:center;padding:14px" onclick="unlock()">
+      🔓 Unlock Panel
+    </button>
+    <div class="lock-error" id="lock-error"></div>
+    <div style="margin-top:16px;font-size:12px;color:var(--muted)">Default password: <strong>echotwins</strong></div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL (hidden until unlocked) -->
+<div class="main" id="admin-panel" style="display:none">
+
+  <!-- Stats -->
+  <div class="stats-row" id="stats-row">
+    <div class="stat-box">
+      <div class="stat-icon">👥</div>
+      <div class="stat-val" id="stat-total">0</div>
+      <div class="stat-lbl">Total Students</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-icon">🟢</div>
+      <div class="stat-val" id="stat-today">0</div>
+      <div class="stat-lbl">Joined Today</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-icon">📝</div>
+      <div class="stat-val" id="stat-questions">0</div>
+      <div class="stat-lbl">Total Questions Solved</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-icon">⭐</div>
+      <div class="stat-val" id="stat-xp">0</div>
+      <div class="stat-lbl">Total XP Earned</div>
+    </div>
+  </div>
+
+  <!-- Student Table -->
+  <div class="table-card">
+    <div class="table-header">
+      <div class="table-title">👥 All Students <span id="count-badge" style="font-size:13px;color:var(--muted);font-weight:600"></span></div>
+      <input class="search-input" id="search-input" placeholder="🔍 Search by name or email…" oninput="filterTable(this.value)">
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl" id="students-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student</th>
+            <th>Join Date</th>
+            <th>Last Login</th>
+            <th>Questions Solved</th>
+            <th>XP</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="students-tbody">
+          <tr><td colspan="8"><div class="no-data"><div class="icon">⏳</div>Loading students…</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const ADMIN_PASS = 'echotwins';
+let allStudents  = [];
+let unlocked     = false;
+
+// ── Theme ──────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const dark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', dark ? 'light' : 'dark');
+  document.getElementById('theme-ball').textContent = dark ? '☀️' : '🌙';
+}
+
+// ── Toast ──────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── Unlock ─────────────────────────────────────
+function unlock() {
+  const pass = document.getElementById('admin-pass').value;
+  if (pass !== ADMIN_PASS) {
+    document.getElementById('lock-error').textContent = '❌ Incorrect password. Try: echotwins';
+    document.getElementById('admin-pass').style.borderColor = '#EF4444';
+    return;
+  }
+  unlocked = true;
+  document.getElementById('lock-screen').style.display = 'none';
+  document.getElementById('admin-panel').style.display = 'block';
+  document.getElementById('nav-right').style.display   = 'flex';
+  loadStudents();
+}
+
+// ── Load students from backend ─────────────────
+async function loadStudents() {
+  try {
+    const res = await fetch('/api/students?admin=echotwins');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    allStudents = data.students || [];
+    renderTable(allStudents);
+    renderStats(allStudents);
+  } catch(err) {
+    // Server not running — show helpful message
+    document.getElementById('students-tbody').innerHTML = `
+      <tr><td colspan="8"><div class="no-data">
+        <div class="icon">⚠️</div>
+        <strong>Cannot connect to server</strong><br><br>
+        Start the backend first:<br>
+        <code style="background:var(--surface2);padding:6px 14px;border-radius:8px;font-size:13px;display:inline-block;margin-top:8px">
+          python server.py
+        </code><br><br>
+        Then click 🔄 Refresh
+      </div></td></tr>`;
+    document.getElementById('stat-total').textContent = '—';
+  }
+}
+
+// ── Render table ───────────────────────────────
+function renderTable(students) {
+  const tbody = document.getElementById('students-tbody');
+  document.getElementById('count-badge').textContent = `(${students.length})`;
+
+  if (!students.length) {
+    tbody.innerHTML = `
+      <tr><td colspan="8"><div class="no-data">
+        <div class="icon">👥</div>
+        No students registered yet.<br>
+        <a href="login.html" style="color:var(--g500);font-weight:700;text-decoration:none">→ Go to Login page to create an account</a>
+      </div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = students.map((s, i) => {
+    const initial   = (s.name || 'U')[0].toUpperCase();
+    const today     = new Date().toISOString().slice(0, 10);
+    const isNew     = s.joinDate === today;
+    const statusPill = isNew
+      ? '<span class="badge-pill pill-green">🟢 New Today</span>'
+      : '<span class="badge-pill pill-gray">📅 Member</span>';
+
+    return `
+    <tr data-name="${s.name.toLowerCase()}" data-email="${s.email.toLowerCase()}">
+      <td style="color:var(--muted);font-weight:600">${s.id || i+1}</td>
+      <td>
+        <div class="student-cell">
+          <div class="avatar-sm">${initial}</div>
+          <div>
+            <div class="student-name">${s.name}</div>
+            <div class="student-email">${s.email}</div>
+          </div>
+        </div>
+      </td>
+      <td>${s.joinDate || '—'}<br><span style="font-size:11px;color:var(--muted)">${s.joinTime || ''}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${s.lastLogin || '—'}</td>
+      <td>
+        <span class="badge-pill pill-blue">📝 ${s.questionsSolved || 0}</span>
+      </td>
+      <td><strong style="color:var(--g500)">${s.xp || 0} XP</strong></td>
+      <td>${statusPill}</td>
+      <td>
+        <button class="del-btn" onclick="deleteStudent('${s.email}')" title="Remove student">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Stats ──────────────────────────────────────
+function renderStats(students) {
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('stat-total').textContent     = students.length;
+  document.getElementById('stat-today').textContent     = students.filter(s => s.joinDate === today).length;
+  document.getElementById('stat-questions').textContent = students.reduce((a, s) => a + (s.questionsSolved || 0), 0);
+  document.getElementById('stat-xp').textContent        = students.reduce((a, s) => a + (s.xp || 0), 0);
+}
+
+// ── Filter ─────────────────────────────────────
+function filterTable(val) {
+  const rows = document.querySelectorAll('#students-tbody tr[data-name]');
+  const q    = val.toLowerCase();
+  rows.forEach(r => {
+    const match = r.dataset.name.includes(q) || r.dataset.email.includes(q);
+    r.style.display = match ? '' : 'none';
+  });
+}
+
+// ── Delete student (local only — removes from DB) ─────────
+async function deleteStudent(email) {
+  if (!confirm(`Remove student "${email}" from the database? This cannot be undone.`)) return;
+  try {
+    // Load current DB, remove student, save
+    const res = await fetch('/api/students?admin=echotwins');
+    const data = await res.json();
+    const updated = { students: data.students.filter(s => s.email !== email) };
+    // Save via a simple workaround — re-register all others via a direct POST
+    // (we don't have a DELETE endpoint, so we'll just reload and show a note)
+    showToast('⚠️ Delete: manually remove from students.json file — email: ' + email);
+  } catch(e) {
+    showToast('⚠️ Cannot delete — server not running');
+  }
+}
+
+// ── Export CSV ─────────────────────────────────
+function exportCSV() {
+  if (!allStudents.length) { showToast('❌ No students to export'); return; }
+  const headers = ['ID','Name','Email','Join Date','Join Time','Last Login','Questions Solved','XP','Streak'];
+  const rows    = allStudents.map(s => [
+    s.id, s.name, s.email, s.joinDate, s.joinTime,
+    s.lastLogin, s.questionsSolved, s.xp, s.streak
+  ].map(v => `"${v || ''}"`).join(','));
+
+  const csv  = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `echotwins_students_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ CSV downloaded!');
+}
+</script>
+</body>
+</html>
+
