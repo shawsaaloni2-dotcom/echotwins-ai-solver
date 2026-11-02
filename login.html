@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EchoTwins AI — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- ══ CONFIG ══ -->
+<script src="config.js"></script>
+
+<!-- ══ FIREBASE SDKs (loaded dynamically after config is ready) ══ -->
+<script type="module" id="firebase-module">
+  // Dynamically import Firebase only when keys are configured
+  async function initFirebase() {
+    const cfg = ECHOTWINS_CONFIG.FIREBASE;
+    if (!ECHOTWINS_CONFIG.FIREBASE_READY) return null;
+    const { initializeApp }          = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+    const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+            signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail,
+            updateProfile }          = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+    const app  = initializeApp(cfg);
+    const auth = getAuth(app);
+    window._fbAuth             = auth;
+    window._fbSignIn           = (e,p) => signInWithEmailAndPassword(auth,e,p);
+    window._fbSignUp           = (e,p) => createUserWithEmailAndPassword(auth,e,p);
+    window._fbGoogleSignIn     = ()    => signInWithPopup(auth, new GoogleAuthProvider());
+    window._fbResetPass        = (e)   => sendPasswordResetEmail(auth,e);
+    window._fbUpdateProfile    = (u,d) => updateProfile(u,d);
+    console.log("✅ Firebase Auth ready");
+    return auth;
+  }
+  window._firebaseInitPromise = initFirebase();
+</script>
+<style>
+/* ════════════════════════════════════════
+   THEME VARIABLES (matches echotwins_solver.html)
+════════════════════════════════════════ */
+:root {
+  --g400:#4ADE80; --g500:#22C55E; --g600:#16A34A; --g700:#15803D; --g800:#166534;
+  --g100:#DCFCE7; --g200:#BBF7D0; --g50:#F0FDF4; --g300:#86EFAC;
+}
+[data-theme="light"] {
+  --bg:         #F0FDF4;
+  --surface:    #ffffff;
+  --surface2:   #F0FDF4;
+  --border:     #C6E8CC;
+  --ink:        #0F2517;
+  --ink2:       #1E4D2B;
+  --muted:      #4B7A59;
+  --nav-bg:     #ffffff;
+  --nav-border: #DCF5E4;
+  --card-bg:    #ffffff;
+  --input-bg:   #ffffff;
+  --input-border:#C6E8CC;
+  --chip-bg:    #F0FDF4;
+  --shadow:     0 2px 24px rgba(22,163,74,.10);
+  --shadow-lg:  0 8px 40px rgba(22,163,74,.15);
+}
+[data-theme="dark"] {
+  --bg:         #0A1A0D;
+  --surface:    #111F14;
+  --surface2:   #162B1B;
+  --border:     #1E4028;
+  --ink:        #E8F5EC;
+  --ink2:       #B6DFC0;
+  --muted:      #7DB892;
+  --nav-bg:     #0D1F10;
+  --nav-border: #193324;
+  --card-bg:    #111F14;
+  --input-bg:   #0F1C12;
+  --input-border:#1E4028;
+  --chip-bg:    #162B1B;
+  --shadow:     0 2px 24px rgba(0,0,0,.40);
+  --shadow-lg:  0 8px 40px rgba(0,0,0,.50);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  transition: background .3s, color .3s;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ════ NAV ════ */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--nav-bg);
+  border-bottom: 2px solid var(--nav-border);
+  box-shadow: var(--shadow);
+  height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+  transition: background .3s, border-color .3s;
+}
+.nav-logo { display: flex; align-items: center; gap: 12px; }
+.logo-icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--g700), var(--g500));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(22,163,74,.35);
+}
+.logo-text { font-size: 20px; font-weight: 800; letter-spacing: -.4px; color: var(--ink); line-height: 1; }
+.logo-text span { color: var(--g600); }
+.logo-sub { font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: .04em; margin-top: 2px; }
+
+.theme-toggle {
+  width: 44px; height: 24px; border-radius: 12px;
+  background: var(--border); border: none; cursor: pointer;
+  position: relative; transition: background .3s; flex-shrink: 0;
+}
+[data-theme="dark"] .theme-toggle { background: var(--g600); }
+.theme-toggle-ball {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; position: absolute; top: 3px; left: 3px;
+  transition: transform .3s;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+}
+[data-theme="dark"] .theme-toggle-ball { transform: translateX(20px); }
+
+/* ════ MAIN ════ */
+.main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Decorative BG blobs */
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: .18;
+  pointer-events: none;
+}
+.blob-1 { width: 420px; height: 420px; background: var(--g500); top: -100px; left: -100px; }
+.blob-2 { width: 320px; height: 320px; background: var(--g400); bottom: -80px; right: -60px; }
+
+/* ════ LOGIN CARD ════ */
+.login-card {
+  background: var(--card-bg);
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  box-shadow: var(--shadow-lg);
+  padding: 44px 40px 36px;
+  width: 100%;
+  max-width: 440px;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp .5s ease both;
+}
+@keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+
+/* AI avatar mini */
+.login-avatar {
+  width: 68px; height: 68px; border-radius: 50%;
+  border: 3px solid var(--g500);
+  box-shadow: 0 0 0 6px rgba(34,197,94,.15);
+  background: linear-gradient(135deg,#0A2F14,#164D24);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.login-title { font-size: 26px; font-weight: 800; color: var(--ink); text-align: center; margin-bottom: 6px; }
+.login-sub   { font-size: 14px; color: var(--muted); text-align: center; line-height: 1.6; margin-bottom: 32px; }
+
+/* ════ TABS ════ */
+.tabs {
+  display: grid; grid-template-columns: 1fr 1fr;
+  background: var(--surface2);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 28px;
+  border: 1.5px solid var(--border);
+}
+.tab {
+  padding: 10px; border-radius: 9px; text-align: center;
+  font-size: 14px; font-weight: 600; color: var(--muted);
+  cursor: pointer; transition: all .2s;
+}
+.tab.active {
+  background: var(--card-bg);
+  color: var(--g700);
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+/* ════ FORMS ════ */
+.form-group { margin-bottom: 18px; }
+.form-label { font-size: 12px; font-weight: 700; color: var(--g700); display: block; margin-bottom: 7px; letter-spacing: .04em; }
+
+.input-wrap { position: relative; }
+.input-icon {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  font-size: 16px; pointer-events: none;
+}
+.form-input {
+  font-family: 'Inter', sans-serif;
+  color: var(--ink);
+  background: var(--input-bg);
+  border: 1.8px solid var(--input-border);
+  border-radius: 12px;
+  outline: none;
+  width: 100%;
+  padding: 13px 16px 13px 42px;
+  font-size: 14px;
+  transition: border-color .2s, background .3s;
+}
+.form-input:focus { border-color: var(--g500); }
+.form-input.no-icon { padding-left: 16px; }
+
+.pass-toggle {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 14px;
+}
+
+/* remember / forgot row */
+.form-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 22px; flex-wrap: wrap; gap: 8px;
+}
+.remember { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.remember input[type=checkbox] { accent-color: var(--g600); width: 15px; height: 15px; }
+.forgot-link { font-size: 13px; color: var(--g600); font-weight: 600; text-decoration: none; }
+.forgot-link:hover { text-decoration: underline; }
+
+/* ════ BUTTONS ════ */
+.btn-primary {
+  background: linear-gradient(135deg, var(--g700), var(--g500));
+  color: #fff; font-weight: 700; padding: 14px 28px;
+  border-radius: 14px; border: none; cursor: pointer;
+  font-size: 15px; font-family: inherit; width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 4px 14px rgba(22,163,74,.35);
+  transition: opacity .15s, transform .1s;
+  margin-bottom: 14px;
+}
+.btn-primary:hover { opacity: .9; transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(1px); }
+.btn-primary:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+.btn-social {
+  background: var(--surface2);
+  border: 1.8px solid var(--border);
+  border-radius: 12px; padding: 12px;
+  font-size: 13px; font-weight: 600; color: var(--ink);
+  cursor: pointer; font-family: inherit; width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: all .15s; margin-bottom: 10px;
+}
+.btn-social:hover { border-color: var(--g500); background: var(--chip-bg); }
+
+/* ════ DIVIDER ════ */
+.divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 4px 0 14px;
+  font-size: 12px; color: var(--muted); font-weight: 500;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* ════ FOOTER ════ */
+.login-footer { text-align: center; margin-top: 20px; font-size: 13px; color: var(--muted); }
+.login-footer a { color: var(--g600); font-weight: 600; text-decoration: none; }
+.login-footer a:hover { text-decoration: underline; }
+
+/* ════ TOAST ════ */
+.toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: var(--g700); color: #fff;
+  padding: 12px 24px; border-radius: 99px;
+  font-size: 14px; font-weight: 600;
+  box-shadow: 0 8px 28px rgba(0,0,0,.25);
+  z-index: 999; transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+  white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ════ PASSWORD STRENGTH ════ */
+.strength-bar { display: flex; gap: 4px; margin-top: 6px; }
+.strength-seg {
+  flex: 1; height: 3px; border-radius: 99px;
+  background: var(--border); transition: background .3s;
+}
+.strength-seg.weak   { background: #EF4444; }
+.strength-seg.fair   { background: #F59E0B; }
+.strength-seg.good   { background: var(--g500); }
+.strength-seg.strong { background: var(--g700); }
+.strength-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* ════ RESPONSIVE ════ */
+@media (max-width: 480px) {
+  .login-card { padding: 32px 22px 28px; }
+  .login-title { font-size: 22px; }
+}
+
+/* spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.4);
+  border-top-color: #fff;
+  animation: spin .7s linear infinite;
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════ NAVBAR ══════════ -->
+<nav class="nav">
+  <div class="nav-logo">
+    <div class="logo-icon">
+      <svg width="22" height="15" viewBox="0 0 38 22">
+        <circle cx="12" cy="11" r="10" fill="#fff" fill-opacity=".9"/>
+        <circle cx="26" cy="11" r="10" fill="none" stroke="#fff" stroke-width="2.2"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">EchoTwins <span>AI</span></div>
+      <div class="logo-sub">Your Cognitive Learning Partner</div>
+    </div>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+    <div class="theme-toggle-ball" id="theme-ball">☀️</div>
+  </button>
+</nav>
+
+<!-- ══════════ MAIN ══════════ -->
+<main class="main">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <div class="login-card">
+
+    <!-- AI Mini Avatar -->
+    <div class="login-avatar">
+      <svg width="38" height="38" viewBox="0 0 130 130" fill="none">
+        <circle cx="65" cy="65" r="54" fill="#0D2F18" stroke="#22C55E" stroke-width="2"/>
+        <line x1="25" y1="65" x2="105" y2="65" stroke="#22C55E" stroke-width=".5" stroke-opacity=".3"/>
+        <line x1="65" y1="25" x2="65" y2="105" stroke="#22C55E" stroke-width=".5" stroke-opacity=".3"/>
+        <rect x="42" y="50" width="16" height="10" rx="5" fill="#22C55E"/>
+        <rect x="72" y="50" width="16" height="10" rx="5" fill="#22C55E"/>
+        <circle cx="65" cy="68" r="2" fill="#16A34A"/>
+        <path d="M52 80 Q65 90 78 80" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      </svg>
+    </div>
+
+    <div class="login-title">Welcome back 👋</div>
+    <div class="login-sub">Sign in to continue your learning journey with your AI twin.</div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" id="tab-login" onclick="switchTab('login')">Sign In</div>
+      <div class="tab" id="tab-signup" onclick="switchTab('signup')">Sign Up</div>
+    </div>
+
+    <!-- ══ LOGIN FORM ══ -->
+    <form id="login-form" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label class="form-label">EMAIL ADDRESS</label>
+        <div class="input-wrap">
+          <span class="input-icon">✉️</span>
+          <input type="email" class="form-input" id="login-email" placeholder="you@example.com" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">PASSWORD</label>
+        <div class="input-wrap">
+          <span class="input-icon">🔒</span>
+          <input type="password" class="form-input" id="login-pass" placeholder="Enter your password" required>
+          <button type="button" class="pass-toggle" onclick="togglePass('login-pass', this)">👁️</button>
+        </div>
+      </div>
+      <div class="form-meta">
+        <label class="remember">
+          <input type="checkbox" id="remember-me"> Remember me
+        </label>
+        <a href="#" class="forgot-link" onclick="showForgot(event)">Forgot password?</a>
+      </div>
+      <button type="submit" class="btn-primary" id="login-btn">
+        <span id="login-btn-text">Sign In →</span>
+      </button>
+    </form>
+
+    <!-- ══ SIGNUP FORM ══ -->
+    <form id="signup-form" style="display:none" onsubmit="handleSignup(event)">
+      <div class="form-group">
+        <label class="form-label">FULL NAME</label>
+        <div class="input-wrap">
+          <span class="input-icon">🧑</span>
+          <input type="text" class="form-input" id="signup-name" placeholder="Your full name" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">EMAIL ADDRESS</label>
+        <div class="input-wrap">
+          <span class="input-icon">✉️</span>
+          <input type="email" class="form-input" id="signup-email" placeholder="you@example.com" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">PASSWORD</label>
+        <div class="input-wrap">
+          <span class="input-icon">🔒</span>
+          <input type="password" class="form-input" id="signup-pass" placeholder="Create a strong password" required oninput="checkStrength(this.value)">
+          <button type="button" class="pass-toggle" onclick="togglePass('signup-pass', this)">👁️</button>
+        </div>
+        <div class="strength-bar">
+          <div class="strength-seg" id="seg1"></div>
+          <div class="strength-seg" id="seg2"></div>
+          <div class="strength-seg" id="seg3"></div>
+          <div class="strength-seg" id="seg4"></div>
+        </div>
+        <div class="strength-label" id="strength-lbl"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">CONFIRM PASSWORD</label>
+        <div class="input-wrap">
+          <span class="input-icon">🔏</span>
+          <input type="password" class="form-input" id="signup-confirm" placeholder="Repeat your password" required>
+          <button type="button" class="pass-toggle" onclick="togglePass('signup-confirm', this)">👁️</button>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" id="signup-btn">
+        <span id="signup-btn-text">Create Account →</span>
+      </button>
+    </form>
+
+    <!-- Social login -->
+    <div class="divider">or continue with</div>
+    <button class="btn-social" onclick="socialLogin('Google')">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/><path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+      Continue with Google
+    </button>
+    <button class="btn-social" onclick="socialLogin('GitHub')">
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      Continue with GitHub
+    </button>
+
+    <div class="login-footer" id="form-footer">
+      Don't have an account? <a href="#" onclick="switchTab('signup');return false;">Sign up free</a>
+    </div>
+
+  </div>
+</main>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Theme ──────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-ball').textContent = isDark ? '☀️' : '🌙';
+}
+
+// ── Tab switch ─────────────────────────────────
+function switchTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('tab-login').classList.toggle('active', isLogin);
+  document.getElementById('tab-signup').classList.toggle('active', !isLogin);
+  document.getElementById('login-form').style.display  = isLogin ? '' : 'none';
+  document.getElementById('signup-form').style.display = isLogin ? 'none' : '';
+  document.getElementById('form-footer').innerHTML = isLogin
+    ? 'Don\'t have an account? <a href="#" onclick="switchTab(\'signup\');return false;">Sign up free</a>'
+    : 'Already have an account? <a href="#" onclick="switchTab(\'login\');return false;">Sign in</a>';
+  document.querySelector('.login-title').textContent = isLogin ? 'Welcome back 👋' : 'Create your account ✨';
+  document.querySelector('.login-sub').textContent   = isLogin
+    ? 'Sign in to continue your learning journey with your AI twin.'
+    : 'Join thousands of learners using EchoTwins AI every day.';
+}
+
+// ── Password visibility ────────────────────────
+function togglePass(id, btn) {
+  const inp = document.getElementById(id);
+  const isPass = inp.type === 'password';
+  inp.type = isPass ? 'text' : 'password';
+  btn.textContent = isPass ? '🙈' : '👁️';
+}
+
+// ── Password strength ──────────────────────────
+function checkStrength(val) {
+  const segs = [1,2,3,4].map(i => document.getElementById('seg'+i));
+  const lbl  = document.getElementById('strength-lbl');
+  segs.forEach(s => s.className = 'strength-seg');
+  if (!val) { lbl.textContent = ''; return; }
+  let score = 0;
+  if (val.length >= 8) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  const labels = ['','Weak','Fair','Good','Strong'];
+  const cls    = ['','weak','fair','good','strong'];
+  for (let i=0;i<score;i++) segs[i].classList.add(cls[score]);
+  lbl.textContent = score ? labels[score] + ' password' : '';
+  lbl.style.color = ['','#EF4444','#F59E0B','#22C55E','#15803D'][score];
+}
+
+// ── Toast ──────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── Login ──────────────────────────────────────
+async function handleLogin(e) {
+  e.preventDefault();
+  const btn   = document.getElementById('login-btn');
+  const txt   = document.getElementById('login-btn-text');
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  btn.disabled = true;
+  txt.innerHTML = '<div class="spinner"></div> Signing in…';
+
+  if (ECHOTWINS_CONFIG.FIREBASE_READY) {
+    // ── Real Firebase Auth ──
+    try {
+      await window._firebaseInitPromise;
+      const result = await window._fbSignIn(email, pass);
+      const user   = result.user;
+      localStorage.setItem('et_user', JSON.stringify({ email: user.email, name: user.displayName || email.split('@')[0], uid: user.uid }));
+      showToast('✅ Signed in!');
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 800);
+    } catch (err) {
+      showToast('❌ ' + (err.code === 'auth/invalid-credential' ? 'Wrong email or password' : err.message));
+      btn.disabled = false;
+      txt.textContent = 'Sign In →';
+    }
+  } else {
+    // ── Demo mode (no Firebase key) ──
+    setTimeout(() => {
+      localStorage.setItem('et_user', JSON.stringify({ email, name: email.split('@')[0] }));
+      showToast('✅ Demo sign-in successful!');
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 900);
+    }, 1200);
+  }
+}
+
+// ── Signup ─────────────────────────────────────
+async function handleSignup(e) {
+  e.preventDefault();
+  const name    = document.getElementById('signup-name').value.trim();
+  const email   = document.getElementById('signup-email').value.trim();
+  const pass    = document.getElementById('signup-pass').value;
+  const confirm = document.getElementById('signup-confirm').value;
+  if (pass !== confirm) { showToast('❌ Passwords do not match'); return; }
+  if (pass.length < 6)  { showToast('❌ Password too short (min 6 chars)'); return; }
+  const btn = document.getElementById('signup-btn');
+  const txt = document.getElementById('signup-btn-text');
+  btn.disabled = true;
+  txt.innerHTML = '<div class="spinner"></div> Creating account…';
+
+  if (ECHOTWINS_CONFIG.FIREBASE_READY) {
+    // ── Real Firebase Auth ──
+    try {
+      await window._firebaseInitPromise;
+      const result = await window._fbSignUp(email, pass);
+      await window._fbUpdateProfile(result.user, { displayName: name });
+      localStorage.setItem('et_user', JSON.stringify({ email, name, uid: result.user.uid }));
+      showToast('🎉 Account created!');
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 800);
+    } catch (err) {
+      showToast('❌ ' + (err.code === 'auth/email-already-in-use' ? 'Email already registered' : err.message));
+      btn.disabled = false;
+      txt.textContent = 'Create Account →';
+    }
+  } else {
+    // ── Demo mode ──
+    setTimeout(() => {
+      localStorage.setItem('et_user', JSON.stringify({ email, name }));
+      showToast('🎉 Demo account created!');
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 900);
+    }, 1500);
+  }
+}
+
+// ── Social login (Google via Firebase or fallback) ─────────
+async function socialLogin(provider) {
+  if (provider === 'Google' && ECHOTWINS_CONFIG.FIREBASE_READY) {
+    showToast('🔗 Opening Google sign-in…');
+    try {
+      await window._firebaseInitPromise;
+      const result = await window._fbGoogleSignIn();
+      const user   = result.user;
+      localStorage.setItem('et_user', JSON.stringify({ email: user.email, name: user.displayName || user.email.split('@')[0], uid: user.uid, photo: user.photoURL }));
+      showToast('✅ Signed in with Google!');
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 800);
+    } catch (err) {
+      showToast('❌ Google sign-in failed: ' + err.message);
+    }
+  } else {
+    // Fallback (no Firebase key yet)
+    showToast(`🔗 Demo: Connecting to ${provider}…`);
+    setTimeout(() => {
+      localStorage.setItem('et_user', JSON.stringify({ email: `demo@${provider.toLowerCase()}.com`, name: `${provider} Demo User` }));
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
+    }, 1000);
+  }
+}
+
+// ── Forgot password ────────────────────────────
+async function showForgot(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  if (!email) { showToast('⚠️ Enter your email first'); return; }
+  if (ECHOTWINS_CONFIG.FIREBASE_READY) {
+    try {
+      await window._firebaseInitPromise;
+      await window._fbResetPass(email);
+      showToast('📧 Reset link sent to ' + email);
+    } catch (err) {
+      showToast('❌ ' + err.message);
+    }
+  } else {
+    showToast('📧 (Demo) Reset link would be sent to ' + email);
+  }
+}
+
+// ── Show API status banner ─────────────────────
+function showApiStatus() {
+  const metaOk     = ECHOTWINS_CONFIG.META_READY;
+  const geminiOk   = ECHOTWINS_CONFIG.GEMINI_READY;
+  const firebaseOk = ECHOTWINS_CONFIG.FIREBASE_READY;
+  const activeAI   = ECHOTWINS_CONFIG.ACTIVE_AI;
+  if (metaOk && geminiOk && firebaseOk) return;
+
+  const banner = document.createElement('div');
+  banner.style.cssText = `
+    position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+    background:#1E293B;color:#CBD5E1;font-size:12px;font-weight:600;
+    padding:10px 20px;border-radius:12px;z-index:998;
+    display:flex;align-items:center;gap:10px;
+    box-shadow:0 8px 28px rgba(0,0,0,.4);flex-wrap:wrap;max-width:94vw;
+  `;
+  const aiStatus = activeAI === 'demo'
+    ? '<span style="color:#FDE68A">AI: Demo mode</span>'
+    : activeAI === 'meta'
+      ? '<span style="color:#C4B5FD">✓ Meta Muse</span>'
+      : '<span style="color:#86EFAC">✓ Gemini</span>';
+
+  banner.innerHTML = `
+    <span style="font-size:16px">🔑</span>
+    <span>
+      ${!metaOk     ? '<span style="color:#FCA5A5">Meta key missing</span>'     : '<span style="color:#C4B5FD">✓ Meta</span>'}
+      &nbsp;·&nbsp;
+      ${!geminiOk   ? '<span style="color:#FCA5A5">Gemini key missing</span>'   : '<span style="color:#86EFAC">✓ Gemini</span>'}
+      &nbsp;·&nbsp;
+      ${!firebaseOk ? '<span style="color:#FCA5A5">Firebase not set</span>'     : '<span style="color:#86EFAC">✓ Firebase</span>'}
+      &nbsp;·&nbsp; ${aiStatus}
+    </span>
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#64748B;cursor:pointer;font-size:16px;line-height:1;margin-left:4px">×</button>
+  `;
+  document.body.appendChild(banner);
+}
+window.addEventListener('load', showApiStatus);
+</script>
+</body>
+</html>
+
