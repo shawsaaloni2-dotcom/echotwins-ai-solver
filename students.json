@@ -1,0 +1,28 @@
+{
+  "students": [
+    {
+      "id": 1,
+      "name": "Test Student",
+      "email": "test@echotwins.ai",
+      "password": "ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae",
+      "joinDate": "2026-11-02",
+      "joinTime": "18:48:40",
+      "lastLogin": "2026-11-02 18:48:40",
+      "questionsSolved": 0,
+      "xp": 0,
+      "streak": 0
+    },
+    {
+      "id": 2,
+      "name": "Ali Ahmed",
+      "email": "ali@school.com",
+      "password": "9b8769a4a742959a2d0298c36fb70623f2dfacda8436237df08d8dfd5b37374c",
+      "joinDate": "2026-11-02",
+      "joinTime": "18:49:48",
+      "lastLogin": "2026-11-02 18:49:48",
+      "questionsSolved": 0,
+      "xp": 0,
+      "streak": 0
+    }
+  ]
+}
