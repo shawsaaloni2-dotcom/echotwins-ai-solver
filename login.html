@@ -320,7 +320,7 @@ body {
 
 <!-- ══════════ NAVBAR ══════════ -->
 <nav class="nav">
-  <div class="nav-logo">
+  <div class="nav-logo" onclick="window.location.href='index.html'" style="cursor:pointer">
     <div class="logo-icon">
       <svg width="22" height="15" viewBox="0 0 38 22">
         <circle cx="12" cy="11" r="10" fill="#fff" fill-opacity=".9"/>
@@ -332,9 +332,13 @@ body {
       <div class="logo-sub">Your Cognitive Learning Partner</div>
     </div>
   </div>
-  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-    <div class="theme-toggle-ball" id="theme-ball">☀️</div>
-  </button>
+  <div style="display:flex;align-items:center;gap:12px">
+    <a href="index.html" style="font-size:13px;font-weight:600;color:var(--ink);text-decoration:none;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--chip-bg)">🏠 Home</a>
+    <a href="echotwins_solver.html" style="font-size:13px;font-weight:600;color:var(--g700);text-decoration:none;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--chip-bg)">🤖 AI Solver</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+      <div class="theme-toggle-ball" id="theme-ball">☀️</div>
+    </button>
+  </div>
 </nav>
 
 <!-- ══════════ MAIN ══════════ -->
@@ -528,28 +532,38 @@ async function handleLogin(e) {
   btn.disabled = true;
   txt.innerHTML = '<div class="spinner"></div> Signing in…';
 
-  if (ECHOTWINS_CONFIG.FIREBASE_READY) {
-    // ── Real Firebase Auth ──
-    try {
-      await window._firebaseInitPromise;
-      const result = await window._fbSignIn(email, pass);
-      const user   = result.user;
-      localStorage.setItem('et_user', JSON.stringify({ email: user.email, name: user.displayName || email.split('@')[0], uid: user.uid }));
-      showToast('✅ Signed in!');
-      setTimeout(() => { window.location.href = 'dashboard.html'; }, 800);
-    } catch (err) {
-      showToast('❌ ' + (err.code === 'auth/invalid-credential' ? 'Wrong email or password' : err.message));
+  // ── Try local DB first ──
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      localStorage.setItem('et_user', JSON.stringify({ email: data.student.email, name: data.student.name, id: data.student.id }));
+      showToast('✅ Welcome back, ' + data.student.name + '!');
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 900);
+      return;
+    } else {
+      showToast('❌ ' + (data.error || 'Login failed'));
       btn.disabled = false;
       txt.textContent = 'Sign In →';
+      return;
     }
-  } else {
-    // ── Demo mode (no Firebase key) ──
-    setTimeout(() => {
-      localStorage.setItem('et_user', JSON.stringify({ email, name: email.split('@')[0] }));
-      showToast('✅ Demo sign-in successful!');
-      setTimeout(() => { window.location.href = 'dashboard.html'; }, 900);
-    }, 1200);
+  } catch (netErr) {
+    // Server not running — fall back to demo
+    console.warn('DB server not reachable, using demo mode');
   }
+
+  // ── Demo fallback (server not running) ──
+  setTimeout(() => {
+    localStorage.setItem('et_user', JSON.stringify({ email, name: email.split('@')[0] }));
+    showToast('✅ Demo sign-in (no server running)');
+    setTimeout(() => { window.location.href = 'dashboard.html'; }, 900);
+  }, 800);
+  btn.disabled = false;
+  txt.textContent = 'Sign In →';
 }
 
 // ── Signup ─────────────────────────────────────
@@ -566,28 +580,37 @@ async function handleSignup(e) {
   btn.disabled = true;
   txt.innerHTML = '<div class="spinner"></div> Creating account…';
 
-  if (ECHOTWINS_CONFIG.FIREBASE_READY) {
-    // ── Real Firebase Auth ──
-    try {
-      await window._firebaseInitPromise;
-      const result = await window._fbSignUp(email, pass);
-      await window._fbUpdateProfile(result.user, { displayName: name });
-      localStorage.setItem('et_user', JSON.stringify({ email, name, uid: result.user.uid }));
-      showToast('🎉 Account created!');
-      setTimeout(() => { window.location.href = 'dashboard.html'; }, 800);
-    } catch (err) {
-      showToast('❌ ' + (err.code === 'auth/email-already-in-use' ? 'Email already registered' : err.message));
+  // ── Try local DB first ──
+  try {
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password: pass })
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      localStorage.setItem('et_user', JSON.stringify({ email: data.student.email, name: data.student.name, id: data.student.id }));
+      showToast('🎉 Account created! Welcome, ' + name + '!');
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 900);
+      return;
+    } else {
+      showToast('❌ ' + (data.error || 'Registration failed'));
       btn.disabled = false;
       txt.textContent = 'Create Account →';
+      return;
     }
-  } else {
-    // ── Demo mode ──
-    setTimeout(() => {
-      localStorage.setItem('et_user', JSON.stringify({ email, name }));
-      showToast('🎉 Demo account created!');
-      setTimeout(() => { window.location.href = 'dashboard.html'; }, 900);
-    }, 1500);
+  } catch (netErr) {
+    console.warn('DB server not reachable, using demo mode');
   }
+
+  // ── Demo fallback ──
+  setTimeout(() => {
+    localStorage.setItem('et_user', JSON.stringify({ email, name }));
+    showToast('🎉 Demo account created!');
+    setTimeout(() => { window.location.href = 'dashboard.html'; }, 900);
+  }, 1000);
+  btn.disabled = false;
+  txt.textContent = 'Create Account →';
 }
 
 // ── Social login (Google via Firebase or fallback) ─────────
