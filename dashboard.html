@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EchoTwins AI — Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- ══ CONFIG ══ -->
+<script src="config.js"></script>
 <style>
 /* ════════════════════════════════════════
    THEME VARIABLES
@@ -573,13 +575,13 @@ body {
     <button class="menu-btn" onclick="toggleSidebar()" id="menu-btn">
       <span></span><span></span><span></span>
     </button>
-    <div class="logo-icon">
+    <div class="logo-icon" onclick="window.location.href='index.html'" style="cursor:pointer">
       <svg width="22" height="15" viewBox="0 0 38 22">
         <circle cx="12" cy="11" r="10" fill="#fff" fill-opacity=".9"/>
         <circle cx="26" cy="11" r="10" fill="none" stroke="#fff" stroke-width="2.2"/>
       </svg>
     </div>
-    <div>
+    <div onclick="window.location.href='index.html'" style="cursor:pointer">
       <div class="logo-text">EchoTwins <span>AI</span></div>
       <div class="logo-sub">Dashboard</div>
     </div>
@@ -588,11 +590,13 @@ body {
   <div class="nav-center">
     <div class="search-wrap">
       <span style="color:var(--muted);font-size:15px">🔍</span>
-      <input type="text" placeholder="Search questions, topics…" oninput="handleSearch(this.value)">
+      <input type="text" id="dashboard-global-search" placeholder="Ask a question or search history… (Press Enter)" onkeydown="if(event.key==='Enter') quickSolve(this.value)">
     </div>
   </div>
 
   <div class="nav-right">
+    <a href="index.html" class="btn-outline" style="padding:7px 14px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px">🏠 Home</a>
+    <a href="echotwins_solver.html" class="btn-primary" style="padding:8px 16px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px">🤖 AI Solver</a>
     <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
       <div class="theme-toggle-ball" id="theme-ball">☀️</div>
     </button>
@@ -603,7 +607,7 @@ body {
       <div class="avatar-btn" id="nav-avatar">U</div>
       <div class="dropdown">
         <div class="dropdown-item" onclick="navigate('profile')">👤 My Profile</div>
-        <div class="dropdown-item" onclick="navigate('settings')">⚙️ Settings</div>
+        <div class="dropdown-item" onclick="navigate('settings')">⚙️ Settings & API Keys</div>
         <div class="dropdown-item" onclick="navigate('achievements')">🏆 Achievements</div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="logout()">🚪 Sign Out</div>
@@ -1149,6 +1153,43 @@ body {
           </div>
         </div>
         <div class="settings-group">
+          <div class="settings-group-title">🔑 AI Engine & API Keys</div>
+          <div style="padding:18px 20px;background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+              <div>
+                <div style="font-size:13px;font-weight:700;color:var(--ink)">Active AI Engine</div>
+                <div style="font-size:11px;color:var(--muted)">Choose which model powers your solver</div>
+              </div>
+              <select id="dash-ai-provider" style="padding:7px 12px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-size:12px;background:var(--input-bg);color:var(--ink)">
+                <option value="gemini">Google Gemini (Free & Fast)</option>
+                <option value="meta">Meta Model API (Muse)</option>
+                <option value="demo">Demo Mode (Simulation)</option>
+              </select>
+            </div>
+
+            <div style="margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+                <label style="font-size:11px;font-weight:700;color:var(--g700);text-transform:uppercase;letter-spacing:.05em">Google Gemini API Key</label>
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" style="font-size:11px;color:var(--g600);text-decoration:none;font-weight:700">Get Free Key ↗</a>
+              </div>
+              <input type="password" id="dash-gemini-key" placeholder="AIzaSy..." style="padding:10px 14px;border-radius:10px;font-size:13px;width:100%;font-family:monospace">
+            </div>
+
+            <div style="margin-bottom:16px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+                <label style="font-size:11px;font-weight:700;color:var(--g700);text-transform:uppercase;letter-spacing:.05em">Meta Model API Key</label>
+                <a href="https://api.meta.com" target="_blank" style="font-size:11px;color:var(--g600);text-decoration:none;font-weight:700">Meta API ↗</a>
+              </div>
+              <input type="password" id="dash-meta-key" placeholder="Paste Meta key..." style="padding:10px 14px;border-radius:10px;font-size:13px;width:100%;font-family:monospace">
+            </div>
+
+            <button class="btn-primary" onclick="saveDashApiKeys()" style="padding:10px 20px;font-size:13px;width:100%;justify-content:center">
+              💾 Save API Configuration
+            </button>
+          </div>
+        </div>
+
+        <div class="settings-group">
           <div class="settings-group-title">Data</div>
           <div class="setting-row">
             <div class="setting-info">
@@ -1279,32 +1320,78 @@ const historyData = [
 ];
 function buildHistory() {
   const list = document.getElementById('history-list');
-  list.innerHTML = historyData.map(q => `
-    <div class="q-item" onclick="navigate('solver')">
-      <div class="q-item-icon">${q.icon}</div>
+  let userHistory = [];
+  try {
+    userHistory = JSON.parse(localStorage.getItem('et_history') || '[]');
+  } catch(e) { userHistory = []; }
+
+  const combined = [...userHistory, ...historyData];
+
+  list.innerHTML = combined.map(q => {
+    const safeText = (q.text || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    return `
+    <div class="q-item" onclick="quickSolve('${safeText}')" title="Open this question in AI Solver">
+      <div class="q-item-icon">${q.icon || '💡'}</div>
       <div class="q-item-body">
         <div class="q-item-text">${q.text}</div>
         <div class="q-item-meta">
-          <span class="q-item-tag ${q.tag}">${q.subj}</span>
-          <span>${q.time}</span>
+          <span class="q-item-tag ${q.tag || 'tag-math'}">${q.subj || 'General'}</span>
+          <span>${q.time || 'Recently'}</span>
           <span>✅ Solved</span>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+// ── Quick Solve Navigation ─────────────────────
+function quickSolve(val) {
+  if (!val || !val.trim()) return;
+  window.location.href = `echotwins_solver.html?q=${encodeURIComponent(val.trim())}`;
 }
 
 // ── Search ─────────────────────────────────────
 function handleSearch(val) {
-  if (val.trim()) showToast(`🔍 Searching for "${val}"…`);
+  if (!val) { buildHistory(); return; }
+  const list = document.getElementById('history-list');
+  const items = list.querySelectorAll('.q-item');
+  items.forEach(it => {
+    const text = it.textContent.toLowerCase();
+    it.style.display = text.includes(val.toLowerCase()) ? 'flex' : 'none';
+  });
 }
 
 // ── Clear history ──────────────────────────────
 function clearHistory() {
   if (confirm('Clear all question history? This cannot be undone.')) {
+    localStorage.removeItem('et_history');
     document.getElementById('history-list').innerHTML =
       '<div style="text-align:center;padding:40px;color:var(--muted)">No questions yet. <a href="echotwins_solver.html" style="color:var(--g600);font-weight:700">Start solving →</a></div>';
     showToast('🗑️ History cleared');
   }
+}
+
+// ── Save API Keys from Dashboard Settings ─────
+function loadDashApiKeys() {
+  const gInput = document.getElementById('dash-gemini-key');
+  const mInput = document.getElementById('dash-meta-key');
+  const pSelect = document.getElementById('dash-ai-provider');
+  if (gInput) gInput.value = localStorage.getItem('et_gemini_key') || '';
+  if (mInput) mInput.value = localStorage.getItem('et_meta_key') || '';
+  if (pSelect) pSelect.value = localStorage.getItem('et_ai_provider') || 'gemini';
+}
+
+function saveDashApiKeys() {
+  const gKey = document.getElementById('dash-gemini-key').value.trim();
+  const mKey = document.getElementById('dash-meta-key').value.trim();
+  const prov = document.getElementById('dash-ai-provider').value;
+
+  ECHOTWINS_CONFIG.saveKeys({
+    geminiKey: gKey,
+    metaKey:   mKey,
+    provider:  prov
+  });
+  showToast('✅ API settings saved successfully!');
 }
 
 // ── Logout ─────────────────────────────────────
@@ -1316,6 +1403,7 @@ function logout() {
 
 // ── Boot ───────────────────────────────────────
 initUser();
+loadDashApiKeys();
 </script>
 </body>
 </html>
