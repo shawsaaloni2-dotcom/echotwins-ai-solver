@@ -1,0 +1,24 @@
+# ── Secrets & local data ──────────────────────────────────
+.env
+students.json
+*.db
+
+# ── Never commit the live config (contains API keys) ─────
+config.js
+
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# ── OS / editor ───────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+

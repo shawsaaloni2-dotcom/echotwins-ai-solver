@@ -865,7 +865,13 @@ body {
         <p class="page-sub">All questions you've solved with your EchoTwins AI twin.</p>
       </div>
       <div class="card">
-        <div class="q-list" id="history-list"></div>
+        <div class="q-list" id="history-list"><div style="text-align:center;padding:40px;color:var(--muted)">Loading…</div></div>
+        <!-- Pagination -->
+        <div id="history-pagination" style="display:none;justify-content:center;align-items:center;gap:12px;padding:16px 0;flex-wrap:wrap">
+          <button class="btn-outline" id="hist-prev" onclick="loadHistory(histPage-1)" style="padding:8px 18px">&#8592; Prev</button>
+          <span id="hist-page-info" style="font-size:13px;color:var(--muted);font-weight:600"></span>
+          <button class="btn-outline" id="hist-next" onclick="loadHistory(histPage+1)" style="padding:8px 18px">Next &#8594;</button>
+        </div>
       </div>
     </div>
 
@@ -1303,46 +1309,81 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2800);
 }
 
-// ── History list ───────────────────────────────
-const historyData = [
-  { icon:'🔢', text:'Average speed: train 60 km/h return 40 km/h', tag:'tag-math', subj:'Mathematics', time:'2 hours ago' },
-  { icon:'⚡', text:'What is the difference between AC and DC current?', tag:'tag-sci', subj:'Physics', time:'Yesterday' },
-  { icon:'🌿', text:'Explain photosynthesis and light-dependent reactions', tag:'tag-sci', subj:'Biology', time:'2 days ago' },
-  { icon:'📖', text:'Main causes of World War I', tag:'tag-hist', subj:'History', time:'3 days ago' },
-  { icon:'🤔', text:'River crossing puzzle: farmer, fox, chicken, grain', tag:'tag-logic', subj:'Logic', time:'4 days ago' },
-  { icon:'🔢', text:'Solve quadratic: x² - 5x + 6 = 0', tag:'tag-math', subj:'Mathematics', time:'5 days ago' },
-  { icon:'🌍', text:'Why is the Sahara the largest hot desert?', tag:'tag-geo', subj:'Geography', time:'5 days ago' },
-  { icon:'⚗️', text:'What is Le Chatelier\'s Principle?', tag:'tag-sci', subj:'Chemistry', time:'6 days ago' },
-  { icon:'💡', text:'Who invented the telephone?', tag:'tag-logic', subj:'General', time:'6 days ago' },
-  { icon:'📐', text:'Explain Ohm\'s Law with examples', tag:'tag-sci', subj:'Physics', time:'7 days ago' },
-  { icon:'🔢', text:'What is the derivative of sin(x)?', tag:'tag-math', subj:'Mathematics', time:'8 days ago' },
-  { icon:'🤔', text:'Monty Hall problem — switch or stay?', tag:'tag-logic', subj:'Logic', time:'8 days ago' },
-];
-function buildHistory() {
-  const list = document.getElementById('history-list');
-  let userHistory = [];
+// ── History list (API-driven, paginated) ──────
+let histPage  = 1;
+const HIST_SIZE = 20;
+
+async function loadHistory(page = 1) {
+  const user = JSON.parse(localStorage.getItem('et_user') || '{}');
+  if (!user.id) {
+    document.getElementById('history-list').innerHTML =
+      '<div style="text-align:center;padding:40px;color:var(--muted)">Sign in to see your history.</div>';
+    return;
+  }
+  histPage = page;
+  const list  = document.getElementById('history-list');
+  const pgCtl = document.getElementById('history-pagination');
+  list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Loading…</div>';
+
   try {
-    userHistory = JSON.parse(localStorage.getItem('et_history') || '[]');
-  } catch(e) { userHistory = []; }
+    const res  = await fetch(`/api/history?student_id=${user.id}&page=${page}&size=${HIST_SIZE}`);
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Failed');
 
-  const combined = [...userHistory, ...historyData];
+    if (!data.questions.length && page === 1) {
+      list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">No questions yet. <a href="echotwins_solver.html" style="color:var(--g600);font-weight:700">Start solving →</a></div>';
+      if (pgCtl) pgCtl.style.display = 'none';
+      return;
+    }
 
-  list.innerHTML = combined.map(q => {
-    const safeText = (q.text || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    return `
-    <div class="q-item" onclick="quickSolve('${safeText}')" title="Open this question in AI Solver">
-      <div class="q-item-icon">${q.icon || '💡'}</div>
-      <div class="q-item-body">
-        <div class="q-item-text">${q.text}</div>
-        <div class="q-item-meta">
-          <span class="q-item-tag ${q.tag || 'tag-math'}">${q.subj || 'General'}</span>
-          <span>${q.time || 'Recently'}</span>
-          <span>✅ Solved</span>
+    list.innerHTML = data.questions.map(q => {
+      const safeText = (q.question || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      const when     = new Date(q.created_at).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+      return `
+      <div class="q-item" onclick="quickSolve('${safeText}')" title="Open in AI Solver">
+        <div class="q-item-icon">💡</div>
+        <div class="q-item-body">
+          <div class="q-item-text">${q.question}</div>
+          <div class="q-item-meta">
+            <span class="q-item-tag tag-math">Solved</span>
+            <span>${when}</span>
+            <span>✅ Answered</span>
+          </div>
         </div>
-      </div>
-    </div>`;
-  }).join('');
+      </div>`;
+    }).join('');
+
+    // Pagination controls
+    if (pgCtl) {
+      const info = document.getElementById('hist-page-info');
+      const prev = document.getElementById('hist-prev');
+      const next = document.getElementById('hist-next');
+      if (info) info.textContent = `Page ${data.page} of ${data.pages}  (${data.total} total)`;
+      if (prev) prev.disabled = page <= 1;
+      if (next) next.disabled = page >= data.pages;
+      pgCtl.style.display = data.pages > 1 ? 'flex' : 'none';
+    }
+  } catch (err) {
+    // Fall back to localStorage history if server unreachable
+    let userHistory = [];
+    try { userHistory = JSON.parse(localStorage.getItem('et_history') || '[]'); } catch(e) {}
+    if (userHistory.length) {
+      list.innerHTML = userHistory.map(q => `
+        <div class="q-item" onclick="quickSolve('${(q.text||'').replace(/'/g,"\\'")}')" title="Open in AI Solver">
+          <div class="q-item-icon">${q.icon || '💡'}</div>
+          <div class="q-item-body">
+            <div class="q-item-text">${q.text}</div>
+            <div class="q-item-meta"><span class="q-item-tag tag-math">Local</span><span>${q.time||'Recently'}</span></div>
+          </div>
+        </div>`).join('');
+    } else {
+      list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Could not load history. Is the server running?</div>';
+    }
+  }
 }
+
+// Keep legacy alias for any existing callers
+function buildHistory() { loadHistory(1); }
 
 // ── Quick Solve Navigation ─────────────────────
 function quickSolve(val) {
@@ -1361,13 +1402,12 @@ function handleSearch(val) {
   });
 }
 
-// ── Clear history ──────────────────────────────
+// ── Clear history (localStorage only — DB records kept) ─
 function clearHistory() {
-  if (confirm('Clear all question history? This cannot be undone.')) {
+  if (confirm('Clear local history cache? (Your cloud history is preserved.)')) {
     localStorage.removeItem('et_history');
-    document.getElementById('history-list').innerHTML =
-      '<div style="text-align:center;padding:40px;color:var(--muted)">No questions yet. <a href="echotwins_solver.html" style="color:var(--g600);font-weight:700">Start solving →</a></div>';
-    showToast('🗑️ History cleared');
+    loadHistory(1);
+    showToast('🗑️ Local cache cleared');
   }
 }
 
@@ -1404,6 +1444,7 @@ function logout() {
 // ── Boot ───────────────────────────────────────
 initUser();
 loadDashApiKeys();
+loadHistory(1);
 </script>
 </body>
 </html>

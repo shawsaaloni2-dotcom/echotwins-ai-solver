@@ -283,6 +283,12 @@ body {
           <tr><td colspan="8"><div class="no-data"><div class="icon">⏳</div>Loading students…</div></td></tr>
         </tbody>
       </table>
+    <!-- Admin Pagination -->
+    <div id="admin-pagination" style="display:none;justify-content:center;align-items:center;gap:12px;padding:16px 0;flex-wrap:wrap">
+      <button class="btn btn-outline" id="admin-prev" onclick="loadStudents(adminPage-1)">&larr; Prev</button>
+      <span id="admin-page-info" style="font-size:13px;font-weight:600;color:#888"></span>
+      <button class="btn btn-outline" id="admin-next" onclick="loadStudents(adminPage+1)">Next &rarr;</button>
+    </div>
     </div>
   </div>
 
@@ -292,7 +298,7 @@ body {
 <div class="toast" id="toast"></div>
 
 <script>
-const ADMIN_PASS = 'echotwins';
+// Admin secret is verified server-side via X-Admin-Secret header
 let allStudents  = [];
 let unlocked     = false;
 
@@ -321,34 +327,67 @@ function unlock() {
     return;
   }
   unlocked = true;
+  const pwd = document.getElementById('admin-pwd-input')?.value || '';
+  if (pwd) sessionStorage.setItem('et_admin_secret', pwd);
   document.getElementById('lock-screen').style.display = 'none';
   document.getElementById('admin-panel').style.display = 'block';
   document.getElementById('nav-right').style.display   = 'flex';
-  loadStudents();
+  loadStudents(1);
 }
 
-// ── Load students from backend ─────────────────
-async function loadStudents() {
+// ── Admin state ──────────────────────────────────
+let adminPage = 1;
+const ADMIN_SIZE = 20;
+
+function getAdminSecret() {
+  let s = sessionStorage.getItem('et_admin_secret');
+  if (!s) {
+    s = prompt('Enter admin secret (ADMIN_SECRET from .env):') || '';
+    if (s) sessionStorage.setItem('et_admin_secret', s);
+  }
+  return s;
+}
+
+// ── Load students from Supabase API ─────────────────
+async function loadStudents(page = 1) {
+  adminPage = page;
+  const secret = getAdminSecret();
+  if (!secret) { showToast('Admin secret required'); return; }
+
+  document.getElementById('students-tbody').innerHTML =
+    '<tr><td colspan="8"><div class="no-data"><div class="icon">⏳</div>Loading…</div></td></tr>';
+
   try {
-    const res = await fetch('/api/students?admin=echotwins');
+    const res  = await fetch('/api/admin/students?page=' + page + '&size=' + ADMIN_SIZE,
+                             { headers: { 'X-Admin-Secret': secret } });
     const data = await res.json();
+    if (res.status === 403) { showToast('Forbidden: wrong admin secret'); return; }
     if (!res.ok) throw new Error(data.error);
+
     allStudents = data.students || [];
     renderTable(allStudents);
-    renderStats(allStudents);
+
+    // Pagination controls
+    const pgCtl = document.getElementById('admin-pagination');
+    if (pgCtl) {
+      const info = document.getElementById('admin-page-info');
+      const prev = document.getElementById('admin-prev');
+      const next = document.getElementById('admin-next');
+      if (info) info.textContent = 'Page ' + data.page + ' of ' + data.pages + '  (' + data.total + ' students)';
+      if (prev) prev.disabled = page <= 1;
+      if (next) next.disabled = page >= data.pages;
+      pgCtl.style.display = data.pages > 1 ? 'flex' : 'none';
+    }
+
+    // Aggregate stats
+    const sRes  = await fetch('/api/admin/stats', { headers: { 'X-Admin-Secret': secret } });
+    const sData = await sRes.json();
+    if (sRes.ok && sData.ok) renderStats(sData);
+
   } catch(err) {
-    // Server not running — show helpful message
-    document.getElementById('students-tbody').innerHTML = `
-      <tr><td colspan="8"><div class="no-data">
-        <div class="icon">⚠️</div>
-        <strong>Cannot connect to server</strong><br><br>
-        Start the backend first:<br>
-        <code style="background:var(--surface2);padding:6px 14px;border-radius:8px;font-size:13px;display:inline-block;margin-top:8px">
-          python server.py
-        </code><br><br>
-        Then click 🔄 Refresh
-      </div></td></tr>`;
-    document.getElementById('stat-total').textContent = '—';
+    document.getElementById('students-tbody').innerHTML =
+      '<tr><td colspan="8"><div class="no-data"><div class="icon">⚠️</div>' +
+      '<strong>Cannot connect to server</strong><br><br>Run: <code>python server.py</code></div></td></tr>';
   }
 }
 
@@ -402,12 +441,11 @@ function renderTable(students) {
 }
 
 // ── Stats ──────────────────────────────────────
-function renderStats(students) {
-  const today = new Date().toISOString().slice(0, 10);
-  document.getElementById('stat-total').textContent     = students.length;
-  document.getElementById('stat-today').textContent     = students.filter(s => s.joinDate === today).length;
-  document.getElementById('stat-questions').textContent = students.reduce((a, s) => a + (s.questionsSolved || 0), 0);
-  document.getElementById('stat-xp').textContent        = students.reduce((a, s) => a + (s.xp || 0), 0);
+function renderStats(data) {
+  if (document.getElementById('stat-total'))     document.getElementById('stat-total').textContent     = data.total_students  || 0;
+  if (document.getElementById('stat-today'))     document.getElementById('stat-today').textContent     = data.new_today       || 0;
+  if (document.getElementById('stat-questions')) document.getElementById('stat-questions').textContent = data.total_questions || 0;
+  if (document.getElementById('stat-xp'))        document.getElementById('stat-xp').textContent        = data.active_today   || 0;
 }
 
 // ── Filter ─────────────────────────────────────

@@ -1811,29 +1811,42 @@ function copyAnswer() {
     .catch(() => alert('Answer: ' + answer));
 }
 
-/* ── SAVE TO LOCAL STORAGE HISTORY ── */
-function saveToHistory(question, answer, subject) {
+/* ── SAVE QUESTION (API + localStorage fallback) ── */
+async function saveToHistory(question, answer, subject) {
+  // 1. Persist locally for instant feedback
   try {
-    const raw = localStorage.getItem('et_history');
+    const raw  = localStorage.getItem('et_history');
     const hist = raw ? JSON.parse(raw) : [];
     const iconMap = {
-      'Mathematics': '🔢', 'Physics': '⚡', 'Chemistry': '⚗️', 'Biology': '🌿',
-      'History': '📖', 'Geography': '🌍', 'General Knowledge': '💡',
-      'Engineering': '📐', 'Economics': '💼', 'Logic': '🤔'
+      'Mathematics': '\ud83d\udd22', 'Physics': '\u26a1', 'Chemistry': '\u2697\ufe0f', 'Biology': '\ud83c\udf3f',
+      'History': '\ud83d\udcd6', 'Geography': '\ud83c\udf0d', 'General Knowledge': '\ud83d\udca1',
+      'Engineering': '\u2699\ufe0f', 'Economics': '\ud83d\udcb0', 'Logic': '\ud83e\udd14'
     };
     hist.unshift({
-      id: Date.now(),
-      text: question,
-      subj: subject || selectedCategory || 'Mathematics',
-      tag: 'tag-math',
-      icon: iconMap[subject || selectedCategory] || '💡',
-      answer: answer || 'Solved',
-      time: 'Just now'
+      icon:    iconMap[subject] || '\ud83d\udca1',
+      text:    question,
+      tag:     'tag-math',
+      subj:    subject || 'General',
+      time:    'Just now',
+      answer:  answer || 'Solved'
     });
     localStorage.setItem('et_history', JSON.stringify(hist.slice(0, 30)));
-    let solved = parseInt(localStorage.getItem('et_solved_count') || '12', 10) + 1;
+    const solved = parseInt(localStorage.getItem('et_solved_count') || '0', 10) + 1;
     localStorage.setItem('et_solved_count', solved);
-  } catch(e) { console.error('Error saving history:', e); }
+  } catch(e) { console.error('Local history error:', e); }
+
+  // 2. Persist to Supabase via backend API
+  try {
+    const user = JSON.parse(localStorage.getItem('et_user') || '{}');
+    if (!user.id) return;   // Not logged in — skip cloud save
+    const approachEls = document.querySelectorAll('#page3 .approach-title');
+    const approaches  = Array.from(approachEls).map(el => el.textContent.trim());
+    await fetch('/api/questions', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ student_id: user.id, question, approaches, answer: answer || '' })
+    });
+  } catch(e) { console.warn('Cloud save skipped (server not running):', e.message); }
 }
 
 /* ── SOLVE NEW ── */
