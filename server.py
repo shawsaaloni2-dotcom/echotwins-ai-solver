@@ -292,10 +292,10 @@ class Handler(SimpleHTTPRequestHandler):
                 SELECT
                     (SELECT COUNT(*)              FROM students)                        AS total_students,
                     (SELECT COUNT(*)              FROM students
-                     WHERE created_at::date = CURRENT_DATE)                            AS new_today,
+                     WHERE date(created_at) = CURRENT_DATE)                            AS new_today,
                     (SELECT COUNT(*)              FROM questions)                       AS total_questions,
                     (SELECT COUNT(DISTINCT student_id) FROM questions
-                     WHERE created_at::date = CURRENT_DATE)                            AS active_today
+                     WHERE date(created_at) = CURRENT_DATE)                            AS active_today
             """)).fetchone()
 
         return self._json(200, {
@@ -357,14 +357,12 @@ if __name__ == "__main__":
     print("=" * 56)
     print("  Initialising database …")
     db.init_db()
-    print("  Verifying Supabase connection …")
+    print("  Verifying database connection …")
     try:
         info = db.ping()
         print(f"  ✅  Connected → database: {info['database']}, time: {info['server_time']}")
     except Exception as exc:
-        print(f"  ❌  Cannot reach Supabase: {exc}")
-        print("      Check DATABASE_URL in .env and try again.")
-        raise SystemExit(1)
+        print(f"  ⚠️  Could not ping database: {exc}")
     print("=" * 56)
     print("  API endpoints:")
     print("    POST /api/register         Register student")

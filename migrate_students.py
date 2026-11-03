@@ -81,7 +81,7 @@ def migrate():
                     text("""
                         INSERT INTO students (name, email, password_hash, role, created_at)
                         VALUES (:name, :email, :pwd, :role,
-                                COALESCE(:created_at::timestamptz, NOW()))
+                                COALESCE(:created_at, CURRENT_TIMESTAMP))
                         ON CONFLICT (email) DO NOTHING
                     """),
                     {"name": name, "email": email, "pwd": pwd_hash,
