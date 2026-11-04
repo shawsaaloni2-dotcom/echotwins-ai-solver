@@ -6,32 +6,7 @@
 <title>EchoTwins AI — Login</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-<!-- ══ CONFIG ══ -->
-<script src="config.js"></script>
-
-<!-- ══ FIREBASE SDKs (loaded dynamically after config is ready) ══ -->
-<script type="module" id="firebase-module">
-  // Dynamically import Firebase only when keys are configured
-  async function initFirebase() {
-    const cfg = ECHOTWINS_CONFIG.FIREBASE;
-    if (!ECHOTWINS_CONFIG.FIREBASE_READY) return null;
-    const { initializeApp }          = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-    const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-            signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail,
-            updateProfile }          = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
-    const app  = initializeApp(cfg);
-    const auth = getAuth(app);
-    window._fbAuth             = auth;
-    window._fbSignIn           = (e,p) => signInWithEmailAndPassword(auth,e,p);
-    window._fbSignUp           = (e,p) => createUserWithEmailAndPassword(auth,e,p);
-    window._fbGoogleSignIn     = ()    => signInWithPopup(auth, new GoogleAuthProvider());
-    window._fbResetPass        = (e)   => sendPasswordResetEmail(auth,e);
-    window._fbUpdateProfile    = (u,d) => updateProfile(u,d);
-    console.log("✅ Firebase Auth ready");
-    return auth;
-  }
-  window._firebaseInitPromise = initFirebase();
-</script>
+<!-- ══ STYLES ══ -->
 <style>
 /* ════════════════════════════════════════
    THEME VARIABLES (matches echotwins_solver.html)
@@ -655,43 +630,7 @@ async function showForgot(e) {
   }
 }
 
-// ── Show API status banner ─────────────────────
-function showApiStatus() {
-  const metaOk     = ECHOTWINS_CONFIG.META_READY;
-  const geminiOk   = ECHOTWINS_CONFIG.GEMINI_READY;
-  const firebaseOk = ECHOTWINS_CONFIG.FIREBASE_READY;
-  const activeAI   = ECHOTWINS_CONFIG.ACTIVE_AI;
-  if (metaOk && geminiOk && firebaseOk) return;
 
-  const banner = document.createElement('div');
-  banner.style.cssText = `
-    position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
-    background:#1E293B;color:#CBD5E1;font-size:12px;font-weight:600;
-    padding:10px 20px;border-radius:12px;z-index:998;
-    display:flex;align-items:center;gap:10px;
-    box-shadow:0 8px 28px rgba(0,0,0,.4);flex-wrap:wrap;max-width:94vw;
-  `;
-  const aiStatus = activeAI === 'demo'
-    ? '<span style="color:#FDE68A">AI: Demo mode</span>'
-    : activeAI === 'meta'
-      ? '<span style="color:#C4B5FD">✓ Meta Muse</span>'
-      : '<span style="color:#86EFAC">✓ Gemini</span>';
-
-  banner.innerHTML = `
-    <span style="font-size:16px">🔑</span>
-    <span>
-      ${!metaOk     ? '<span style="color:#FCA5A5">Meta key missing</span>'     : '<span style="color:#C4B5FD">✓ Meta</span>'}
-      &nbsp;·&nbsp;
-      ${!geminiOk   ? '<span style="color:#FCA5A5">Gemini key missing</span>'   : '<span style="color:#86EFAC">✓ Gemini</span>'}
-      &nbsp;·&nbsp;
-      ${!firebaseOk ? '<span style="color:#FCA5A5">Firebase not set</span>'     : '<span style="color:#86EFAC">✓ Firebase</span>'}
-      &nbsp;·&nbsp; ${aiStatus}
-    </span>
-    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#64748B;cursor:pointer;font-size:16px;line-height:1;margin-left:4px">×</button>
-  `;
-  document.body.appendChild(banner);
-}
-window.addEventListener('load', showApiStatus);
 </script>
 </body>
 </html>

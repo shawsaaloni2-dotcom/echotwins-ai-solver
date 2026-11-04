@@ -2,6 +2,8 @@
 .env
 students.json
 *.db
+test_supabase.py
+verify_implementation.py
 
 # ── Never commit the live config (contains API keys) ─────
 config.js

@@ -318,56 +318,86 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2800);
 }
 
-// ── Unlock ─────────────────────────────────────
-function unlock() {
-  const pass = document.getElementById('admin-pass').value;
-  if (pass !== ADMIN_PASS) {
-    document.getElementById('lock-error').textContent = '❌ Incorrect password. Try: echotwins';
-    document.getElementById('admin-pass').style.borderColor = '#EF4444';
-    return;
-  }
-  unlocked = true;
-  const pwd = document.getElementById('admin-pwd-input')?.value || '';
-  if (pwd) sessionStorage.setItem('et_admin_secret', pwd);
-  document.getElementById('lock-screen').style.display = 'none';
-  document.getElementById('admin-panel').style.display = 'block';
-  document.getElementById('nav-right').style.display   = 'flex';
-  loadStudents(1);
+// ── Unlock & Session Auth ──
+async function checkAdminSession() {
+  try {
+    const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+    const data = await res.json();
+    if (data.authenticated && data.student && data.student.role === 'admin') {
+      unlocked = true;
+      document.getElementById('lock-screen').style.display = 'none';
+      document.getElementById('admin-panel').style.display = 'block';
+      document.getElementById('nav-right').style.display   = 'flex';
+      loadStudents(1);
+      return true;
+    }
+  } catch(e) {}
+  return false;
 }
 
-// ── Admin state ──────────────────────────────────
+async function unlock() {
+  const secret = (document.getElementById('admin-pass').value || '').trim();
+  if (!secret) {
+    document.getElementById('lock-error').textContent = '⚠️ Please enter the admin secret or log in as admin';
+    return;
+  }
+  sessionStorage.setItem('et_admin_secret', secret);
+  
+  // Test access with this secret
+  try {
+    const res = await fetch('/api/admin/stats', {
+      headers: { 'X-Admin-Secret': secret },
+      credentials: 'same-origin'
+    });
+    if (res.ok) {
+      unlocked = true;
+      document.getElementById('lock-screen').style.display = 'none';
+      document.getElementById('admin-panel').style.display = 'block';
+      document.getElementById('nav-right').style.display   = 'flex';
+      loadStudents(1);
+    } else {
+      document.getElementById('lock-error').textContent = '❌ Invalid admin credentials (403 Forbidden)';
+      document.getElementById('admin-pass').style.borderColor = '#EF4444';
+    }
+  } catch(err) {
+    document.getElementById('lock-error').textContent = '❌ Cannot connect to server';
+  }
+}
+
+// ── Admin state ──
 let adminPage = 1;
 const ADMIN_SIZE = 20;
 
-function getAdminSecret() {
-  let s = sessionStorage.getItem('et_admin_secret');
-  if (!s) {
-    s = prompt('Enter admin secret (ADMIN_SECRET from .env):') || '';
-    if (s) sessionStorage.setItem('et_admin_secret', s);
-  }
-  return s;
+function getAdminHeaders() {
+  const headers = {};
+  const secret = sessionStorage.getItem('et_admin_secret');
+  if (secret) headers['X-Admin-Secret'] = secret;
+  return headers;
 }
 
-// ── Load students from Supabase API ─────────────────
+// ── Load students from API ──
 async function loadStudents(page = 1) {
   adminPage = page;
-  const secret = getAdminSecret();
-  if (!secret) { showToast('Admin secret required'); return; }
-
   document.getElementById('students-tbody').innerHTML =
     '<tr><td colspan="8"><div class="no-data"><div class="icon">⏳</div>Loading…</div></td></tr>';
 
   try {
-    const res  = await fetch('/api/admin/students?page=' + page + '&size=' + ADMIN_SIZE,
-                             { headers: { 'X-Admin-Secret': secret } });
+    const res  = await fetch('/api/admin/students?page=' + page + '&size=' + ADMIN_SIZE, {
+      headers: getAdminHeaders(),
+      credentials: 'same-origin'
+    });
     const data = await res.json();
-    if (res.status === 403) { showToast('Forbidden: wrong admin secret'); return; }
+    if (res.status === 403) {
+      showToast('❌ Forbidden: admin access required');
+      document.getElementById('lock-screen').style.display = 'flex';
+      document.getElementById('admin-panel').style.display = 'none';
+      return;
+    }
     if (!res.ok) throw new Error(data.error);
 
     allStudents = data.students || [];
     renderTable(allStudents);
 
-    // Pagination controls
     const pgCtl = document.getElementById('admin-pagination');
     if (pgCtl) {
       const info = document.getElementById('admin-page-info');
@@ -379,8 +409,10 @@ async function loadStudents(page = 1) {
       pgCtl.style.display = data.pages > 1 ? 'flex' : 'none';
     }
 
-    // Aggregate stats
-    const sRes  = await fetch('/api/admin/stats', { headers: { 'X-Admin-Secret': secret } });
+    const sRes  = await fetch('/api/admin/stats', {
+      headers: getAdminHeaders(),
+      credentials: 'same-origin'
+    });
     const sData = await sRes.json();
     if (sRes.ok && sData.ok) renderStats(sData);
 
@@ -390,6 +422,10 @@ async function loadStudents(page = 1) {
       '<strong>Cannot connect to server</strong><br><br>Run: <code>python server.py</code></div></td></tr>';
   }
 }
+
+window.addEventListener('load', () => {
+  checkAdminSession();
+});
 
 // ── Render table ───────────────────────────────
 function renderTable(students) {
