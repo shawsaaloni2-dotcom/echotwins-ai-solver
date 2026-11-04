@@ -687,7 +687,7 @@ body {
   </div>
 
   <div class="nav-right">
-    <button class="btn-outline" style="padding:7px 12px;font-size:12.5px" onclick="openApiModal()">🔑 API Keys</button>
+    <button class="btn-outline" style="padding:7px 12px;font-size:12.5px" onclick="openApiModal()">⚡ AI Status</button>
     <div id="nav-user-container">
       <button class="btn-primary" style="padding:7px 14px;font-size:12.5px" onclick="showView('auth')">Sign In</button>
     </div>
@@ -735,7 +735,7 @@ body {
     <div class="hero-pills">
       <div class="pill-item">🧠 Step-by-Step Reasoning</div>
       <div class="pill-item">🎤 Voice &amp; Video Sessions</div>
-      <div class="pill-item">🔵 Powered by Gemini AI</div>
+      <div class="pill-item">⚡ Powered by Groq AI</div>
       <div class="pill-item">💾 Local Student Database</div>
       <div class="pill-item">🔥 Streak &amp; XP Tracking</div>
     </div>
@@ -909,6 +909,22 @@ body {
       </div>
       <h3 style="font-size:20px;font-weight:800;color:var(--ink);margin-bottom:14px">How to Solve This Problem</h3>
 
+      <!-- Loading State -->
+      <div id="solver-loading" style="display:none;text-align:center;padding:36px 16px;">
+        <div style="font-size:36px;animation:spin 1s linear infinite;display:inline-block;margin-bottom:12px">⚙️</div>
+        <div style="font-size:16px;font-weight:800;color:var(--ink)">Solving with EchoTwins AI…</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px">Analyzing multiple approaches and computing the exact answer…</div>
+      </div>
+
+      <!-- Error State -->
+      <div id="solver-error" style="display:none;background:rgba(239,68,68,0.1);border:1.5px solid #EF4444;border-radius:14px;padding:18px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-weight:700;color:#EF4444;font-size:14px">⚠️ AI Solver Error</div>
+          <div id="solver-error-msg" style="font-size:12.5px;color:var(--ink);margin-top:4px">Could not complete request.</div>
+        </div>
+        <button id="solver-retry-btn" class="btn-primary" style="background:#EF4444;font-size:12px;padding:6px 14px">🔄 Try Again</button>
+      </div>
+
       <div id="approaches-container">
         <div class="approach-card selected" onclick="selectApproachCard(this)">
           <div class="approach-header">
@@ -950,8 +966,8 @@ body {
   <div class="solver-page" id="spage4">
     <div class="answer-hero">
       <div class="answer-hero-label">Exact Solution</div>
-      <div class="answer-hero-text" id="final-solution-text">Average Speed = 48 km/h</div>
-      <div style="font-size:14px;opacity:.9" id="final-solution-sub">Verified correct using Harmonic Mean formula</div>
+      <div class="answer-hero-text" id="final-solution-text">Solution ready</div>
+      <div style="font-size:14px;opacity:.9" id="final-solution-sub">Computed and saved securely via EchoTwins AI Engine</div>
     </div>
 
     <div class="insight-row">
@@ -979,6 +995,7 @@ body {
       </div>
 
       <div style="display:flex;justify-content:space-between;margin-top:24px;flex-wrap:wrap;gap:10px">
+        <button class="btn-outline" onclick="toggleReadAnswer()" id="btn-read-solution">🔊 Read Aloud</button>
         <button class="btn-outline" onclick="copySolution()">📋 Copy Solution</button>
         <button class="btn-primary" onclick="solveAnotherQuestion()">✨ Solve Another Question →</button>
       </div>
@@ -1188,9 +1205,12 @@ body {
             <span style="font-size:24px">⚡</span>
             <div>
               <div style="font-weight:700;font-size:14px;color:var(--ink)">Server-Side AI Active</div>
-              <div style="font-size:12px;color:var(--muted)">All models are executed securely on the server via /api/solve.</div>
+              <div style="font-size:12px;color:var(--muted)">All models are executed securely on the server via <code>/api/solve</code>.</div>
             </div>
           </div>
+          <p style="font-size:12.5px;color:var(--muted);line-height:1.6">
+            Provider and credentials are managed directly in <code>.env</code> on the server. To change model or provider, update the environment configuration.
+          </p>
         </div>
       </div>
     </main>
@@ -1242,33 +1262,39 @@ body {
   </div>
 </div>
 
-<!-- ══════════════════ API MODAL ══════════════════ -->
+<!-- ══════════════════ AI ENGINE STATUS MODAL ══════════════════ -->
 <div class="modal-overlay" id="api-modal">
   <div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
       <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:22px">🔑</span>
-        <h3 style="font-size:18px;font-weight:800;color:var(--ink)">API Configuration</h3>
+        <span style="font-size:22px">⚡</span>
+        <h3 style="font-size:18px;font-weight:800;color:var(--ink)">AI Engine Status</h3>
       </div>
       <button onclick="closeApiModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)">✕</button>
     </div>
 
-    <div class="form-group">
-      <label class="form-label">Google Gemini API Key (Recommended - Free):</label>
-      <input type="password" id="modal-gemini-key" class="form-input" placeholder="Configured on server (.env)">
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">
-        Get free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--g500)">Google AI Studio ↗</a>
+    <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Server Provider</span>
+        <span class="chip active" id="modal-provider-badge" style="font-size:11px;padding:2px 10px">GROQ</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Configured Model</span>
+        <span style="font-size:12px;font-weight:700;color:var(--ink)" id="modal-model-name">openai/gpt-oss-120b</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Connection Status</span>
+        <span style="font-size:12px;font-weight:700;color:var(--g500)" id="modal-ai-status">Checking…</span>
       </div>
     </div>
 
-    <div class="form-group">
-      <label class="form-label">Meta Model API Key (Optional):</label>
-      <input type="password" id="modal-meta-key" class="form-input" placeholder="Paste Meta key...">
+    <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:20px">
+      🔒 <strong>Server-Side Security:</strong> All AI requests are executed securely on the backend via <code>/api/solve</code>. API keys reside safely in <code>.env</code> and are never sent to or stored in client browsers.
     </div>
 
-    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:22px">
-      <button class="btn-outline" onclick="closeApiModal()">Cancel</button>
-      <button class="btn-primary" onclick="saveApiKeysModal()">Save Keys</button>
+    <div style="display:flex;justify-content:flex-end;gap:10px">
+      <button class="btn-outline" onclick="closeApiModal()">Close</button>
+      <button class="btn-primary" onclick="checkServerAiStatus()">🔄 Refresh Status</button>
     </div>
   </div>
 </div>
@@ -1278,19 +1304,10 @@ body {
 
 <!-- ══════════════════ JAVASCRIPT MASTER ENGINE ══════════════════ -->
 <script>
-// ── Central API Configuration ──────────────────────────────
-const ECHOTWINS_CONFIG = {
-  get META_API_KEY() { return localStorage.getItem('et_meta_key') || ""; },
-  META_MODEL: "muse-wonder",
-  META_ENDPOINT: "https://api.meta.com/v1/chat/completions",
-
-  get GEMINI_API_KEY() { return localStorage.getItem('et_gemini_key') || ""; },
-  GEMINI_MODEL: "gemini-2.0-flash",
-  GEMINI_ENDPOINT: "https://generativelanguage.googleapis.com/v1beta/models",
-
-  get AI_PROVIDER() { return localStorage.getItem('et_ai_provider') || "gemini"; },
-  get GEMINI_READY() { return Boolean(this.GEMINI_API_KEY && this.GEMINI_API_KEY.length > 5); },
-  get META_READY() { return Boolean(this.META_API_KEY && this.META_API_KEY.length > 5); }
+// ── Central App Configuration ──────────────────────────────
+const APP_CONFIG = {
+  APP_NAME: "EchoTwins AI",
+  SOLVER_ENDPOINT: "/api/solve"
 };
 
 // ── Central State ──────────────────────────────────────────
@@ -1571,48 +1588,141 @@ function speakCurrentBubble() {
   speakText(txt);
 }
 
-async function triggerSolverAI() {
-  const question = document.getElementById('solver-q').value.trim();
-  const thought = document.getElementById('solver-thought').value.trim();
+let currentSolverSolution = null;
+let isSpeakingAnswer = false;
 
-  // If Gemini or Meta key is active, call real AI
-  if (ECHOTWINS_CONFIG.GEMINI_READY) {
-    showToast('🔵 Calling Gemini 2.0 Flash...');
-    try {
-      const url = `${ECHOTWINS_CONFIG.GEMINI_ENDPOINT}/${ECHOTWINS_CONFIG.GEMINI_MODEL}:generateContent?key=${ECHOTWINS_CONFIG.GEMINI_API_KEY}`;
-      const prompt = `Solve this educational question: "${question}". Student's thought: "${thought}". Provide the final answer in 1 sentence, and 4 step-by-step points.`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-      });
-      const data = await res.json();
-      const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (txt) {
-        document.getElementById('final-solution-text').textContent = "Solution: " + txt.slice(0, 100);
-        document.getElementById('final-steps-container').innerHTML = txt.replace(/\n/g, '<br>');
-        showToast('✅ Gemini AI solution generated!');
-        return;
-      }
-    } catch(err) {
-      console.warn("Gemini call error:", err);
-    }
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+async function triggerSolverAI() {
+  const qEl = document.getElementById('solver-q');
+  const question = qEl ? qEl.value.trim() : '';
+  if (!question) {
+    showToast('⚠️ Please enter a question in Step 1');
+    goToSolverStep(1);
+    return;
   }
 
-  // Smart Contextual Fallback
-  if (question.toLowerCase().includes('speed') || question.toLowerCase().includes('train')) {
-    document.getElementById('final-solution-text').textContent = "Average Speed = 48 km/h";
-    document.getElementById('final-solution-sub').textContent = "Verified correct using Harmonic Mean formula";
-    document.getElementById('final-takeaway').textContent = "The simple average of 60 and 40 is 50, but because the train spends more time at 40 km/h (3 hours vs 2 hours), the slower speed carries more weight.";
-  } else {
-    document.getElementById('final-solution-text').textContent = "Solution for: " + question.slice(0, 50) + "…";
-    document.getElementById('final-solution-sub').textContent = "Generated via EchoTwins Analytical Engine";
-    document.getElementById('final-steps-container').innerHTML = `
-      1. <strong>Identify Given Information:</strong> Extracted the core parameters for ${selectedSubject}.<br>
-      2. <strong>Governing Formula:</strong> Applied domain equations.<br>
-      3. <strong>Analytical Steps:</strong> Step-by-step simplification completed.<br>
-      4. <strong>Result &amp; Verification:</strong> Validated dimensional consistency.
-    `;
+  const loadEl = document.getElementById('solver-loading');
+  const errEl  = document.getElementById('solver-error');
+  const errMsg = document.getElementById('solver-error-msg');
+  const retryBtn = document.getElementById('solver-retry-btn');
+  const container = document.getElementById('approaches-container');
+
+  if (loadEl) loadEl.style.display = 'block';
+  if (errEl)  errEl.style.display  = 'none';
+  if (container) container.innerHTML = '';
+
+  try {
+    const res = await fetch('/api/solve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ question })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        if (errMsg) errMsg.textContent = 'Please sign in to solve questions with EchoTwins AI.';
+        if (retryBtn) {
+          retryBtn.textContent = 'Sign In →';
+          retryBtn.onclick = () => showView('auth');
+        }
+        if (errEl) errEl.style.display = 'flex';
+        if (loadEl) loadEl.style.display = 'none';
+        return;
+      }
+      throw new Error(data.error || 'Server returned status ' + res.status);
+    }
+
+    currentSolverSolution = data;
+    renderSpaSolution(data);
+    if (loadEl) loadEl.style.display = 'none';
+
+  } catch (err) {
+    if (loadEl) loadEl.style.display = 'none';
+    if (errMsg) errMsg.textContent = err.message || 'Could not connect to AI solver.';
+    if (retryBtn) {
+      retryBtn.textContent = '🔄 Try Again';
+      retryBtn.onclick = () => triggerSolverAI();
+    }
+    if (errEl) errEl.style.display = 'flex';
+  }
+}
+
+function renderSpaSolution(data) {
+  const container = document.getElementById('approaches-container');
+  if (container) {
+    container.innerHTML = '';
+    const approaches = data.approaches || [];
+    approaches.forEach((ap, idx) => {
+      const title = typeof ap === 'string' ? `Approach ${idx + 1}` : (ap.title || `Approach ${idx + 1}`);
+      const body  = typeof ap === 'string' ? ap : (ap.body || ap.description || '');
+
+      const card = document.createElement('div');
+      card.className = `approach-card ${idx === 0 ? 'selected' : ''}`;
+      card.onclick = () => {
+        document.querySelectorAll('.approach-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+      };
+      card.innerHTML = `
+        <div class="approach-header">
+          <div class="approach-num">${idx + 1}</div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--ink)">${escapeHtml(title)}</div>
+          </div>
+        </div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-top:6px">${escapeHtml(body)}</p>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  const finalAns = document.getElementById('final-solution-text');
+  const finalSub = document.getElementById('final-solution-sub');
+  const finalSteps = document.getElementById('final-steps-container');
+  const finalTakeaway = document.getElementById('final-takeaway');
+
+  if (finalAns) finalAns.textContent = data.answer || 'Solution ready';
+  if (finalSub) finalSub.textContent = `Provider: ${escapeHtml(data.provider || 'AI')} · Saved securely to question history`;
+  if (finalSteps && data.approaches) {
+    finalSteps.innerHTML = data.approaches.map((ap, i) => `
+      <div style="margin-bottom:10px">
+        <strong>Approach ${i + 1}:</strong> ${escapeHtml(typeof ap === 'string' ? ap : (ap.body || ap.title || ''))}
+      </div>
+    `).join('');
+  }
+  if (finalTakeaway) {
+    finalTakeaway.textContent = `Verified Answer: ${data.answer}`;
+  }
+
+  // Update bubble in Page 2
+  const bubble = document.getElementById('ai-bubble');
+  if (bubble) {
+    bubble.innerHTML = `💬 <strong>Great news!</strong> I've solved your question with ${(data.approaches || []).length} distinct approaches. Ready to review!`;
+  }
+}
+
+function toggleReadAnswer() {
+  if (isSpeakingAnswer) {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    isSpeakingAnswer = false;
+    const btn = document.getElementById('btn-read-solution');
+    if (btn) btn.textContent = '🔊 Read Aloud';
+  } else if (currentSolverSolution && currentSolverSolution.answer) {
+    speakText(currentSolverSolution.answer);
+    isSpeakingAnswer = true;
+    const btn = document.getElementById('btn-read-solution');
+    if (btn) btn.textContent = '⏹️ Stop Reading';
   }
 }
 
@@ -1698,28 +1808,7 @@ function initDashboard() {
   if (overviewContainer) overviewContainer.innerHTML = historyHtml;
   if (fullContainer) fullContainer.innerHTML = historyHtml;
 
-  // Sync settings inputs
-  document.getElementById('dash-gemini-key').value = localStorage.getItem('et_gemini_key') || '';
-  document.getElementById('dash-meta-key').value = localStorage.getItem('et_meta_key') || '';
-}
-
-function clearUserHistory() {
-  if (confirm('Clear all your question history?')) {
-    localStorage.removeItem('et_history');
-    initDashboard();
-    showToast('🗑️ Question history cleared');
-  }
-}
-
-function saveDashSettings() {
-  const gKey = document.getElementById('dash-gemini-key').value.trim();
-  const mKey = document.getElementById('dash-meta-key').value.trim();
-  if (gKey) localStorage.setItem('et_gemini_key', gKey);
-  else localStorage.removeItem('et_gemini_key');
-  if (mKey) localStorage.setItem('et_meta_key', mKey);
-  else localStorage.removeItem('et_meta_key');
-  showToast('✅ Settings saved');
-}
+  // Settings are configured on server via .env
 
 // ── Admin Panel Engine ─────────────────────────────────────
 function initAdminView() {
@@ -1742,16 +1831,23 @@ function unlockAdmin() {
 
 async function fetchStudentsList() {
   const tbody = document.getElementById('admin-students-tbody');
-  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">Fetching student records from students.json...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">Fetching student records from database…</td></tr>';
 
   try {
-    const res = await fetch('/api/students?admin=echotwins');
+    const adminSecret = sessionStorage.getItem('admin_secret') || '';
+    const headers = {};
+    if (adminSecret) headers['X-Admin-Secret'] = adminSecret;
+
+    const res = await fetch('/api/admin/students', {
+      headers,
+      credentials: 'same-origin'
+    });
     const data = await res.json();
     if (res.ok && data.ok) {
       currentAdminStudents = data.students || [];
       renderAdminTable(currentAdminStudents);
     } else {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#EF4444;padding:20px">${data.error || 'Access denied'}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#EF4444;padding:20px">${escapeHtml(data.error || 'Access denied')}</td></tr>`;
     }
   } catch(err) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">⚠️ Server not responding. Ensure server.py is running.</td></tr>`;
@@ -1793,26 +1889,34 @@ function exportAdminCSV() {
   showToast('📥 CSV file exported!');
 }
 
-// ── API Modal Handler ──────────────────────────────────────
-function openApiModal() {
-  document.getElementById('modal-gemini-key').value = localStorage.getItem('et_gemini_key') || '';
-  document.getElementById('modal-meta-key').value = localStorage.getItem('et_meta_key') || '';
+// ── AI Status Modal Handler ──────────────────────────────────
+async function openApiModal() {
   document.getElementById('api-modal').classList.add('show');
+  checkServerAiStatus();
 }
 
 function closeApiModal() {
   document.getElementById('api-modal').classList.remove('show');
 }
 
-function saveApiKeysModal() {
-  const gKey = document.getElementById('modal-gemini-key').value.trim();
-  const mKey = document.getElementById('modal-meta-key').value.trim();
-  if (gKey) localStorage.setItem('et_gemini_key', gKey);
-  else localStorage.removeItem('et_gemini_key');
-  if (mKey) localStorage.setItem('et_meta_key', mKey);
-  else localStorage.removeItem('et_meta_key');
-  closeApiModal();
-  showToast('✅ API Keys updated successfully!');
+async function checkServerAiStatus() {
+  const statusEl = document.getElementById('modal-ai-status');
+  const providerEl = document.getElementById('modal-provider-badge');
+  const modelEl = document.getElementById('modal-model-name');
+  if (statusEl) statusEl.textContent = 'Checking server…';
+  try {
+    const res = await fetch('/api/ai/status');
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      if (providerEl) providerEl.textContent = (data.provider || 'GROQ').toUpperCase();
+      if (modelEl) modelEl.textContent = data.model || 'openai/gpt-oss-120b';
+      if (statusEl) statusEl.textContent = data.configured ? '🟢 Connected & Ready' : '🟡 Key Missing in .env';
+    } else {
+      if (statusEl) statusEl.textContent = '⚠️ ' + (data.error || 'Server error');
+    }
+  } catch(err) {
+    if (statusEl) statusEl.textContent = '❌ Server unreachable';
+  }
 }
 
 // ── Particle Generator ─────────────────────────────────────

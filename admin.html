@@ -499,9 +499,9 @@ async function deleteStudent(email) {
   if (!confirm(`Remove student "${email}" from the database? This cannot be undone.`)) return;
   try {
     // Load current DB, remove student, save
-    const res = await fetch('/api/students?admin=echotwins');
+    // Note: Student deletion is performed directly in Supabase console
     const data = await res.json();
-    const updated = { students: data.students.filter(s => s.email !== email) };
+    
     // Save via a simple workaround — re-register all others via a direct POST
     // (we don't have a DELETE endpoint, so we'll just reload and show a note)
     showToast('⚠️ Delete: manually remove from students.json file — email: ' + email);
