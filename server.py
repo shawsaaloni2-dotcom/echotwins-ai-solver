@@ -26,7 +26,14 @@ All admin endpoints require the header:
 
 import json
 import os
+import sys
 import time
+
+try:
+    if sys.stdout.encoding.lower() != "utf-8":
+        sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -306,6 +313,80 @@ class Handler(SimpleHTTPRequestHandler):
             "active_today":    row[3],
         })
 
+    # ── POST /api/ai/solve (Secure Server AI Proxy) ──────────────────────────
+    def _ai_solve(self):
+        groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+        gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+
+        body = self._body()
+        prompt = body.get("prompt", "")
+        if not prompt:
+            return self._json(400, {"error": "prompt is required"})
+
+        if groq_key:
+            import urllib.request
+            import urllib.error
+
+            groq_model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile").strip() or "llama-3.3-70b-versatile"
+            is_json = "raw JSON format" in prompt or "{" in prompt
+
+            payload = {
+                "model": groq_model,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are EchoTwins AI educational solver. Output valid raw JSON only, without markdown fences or extra prose." if is_json else "You are EchoTwins AI educational tutor. Give encouraging, clear, and direct answers."
+                    },
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.3
+            }
+            if is_json:
+                payload["response_format"] = {"type": "json_object"}
+
+            req = urllib.request.Request(
+                "https://api.groq.com/openai/v1/chat/completions",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {groq_key}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "EchoTwins-AI/1.0"
+                },
+                method="POST"
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=25) as resp:
+                    resp_data = json.loads(resp.read().decode("utf-8"))
+                    text_content = resp_data["choices"][0]["message"]["content"]
+                    return self._json(200, {"ok": True, "result": text_content, "provider": f"Groq ({groq_model})"})
+            except urllib.error.HTTPError as err:
+                err_body = err.read().decode("utf-8", errors="replace")
+                print(f"  [ERROR] Groq API returned {err.code}: {err_body}")
+                return self._json(err.code, {"error": f"Groq API error: {err_body}"})
+            except Exception as err:
+                print(f"  [ERROR] Groq API request failed: {err}")
+                return self._json(500, {"error": str(err)})
+
+        elif gemini_key:
+            import urllib.request
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
+            payload = {"contents": [{"parts": [{"text": prompt}]}]}
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=25) as resp:
+                    resp_data = json.loads(resp.read().decode("utf-8"))
+                    text_content = resp_data["candidates"][0]["content"]["parts"][0]["text"]
+                    return self._json(200, {"ok": True, "result": text_content, "provider": "Gemini 2.0 Flash"})
+            except Exception as err:
+                return self._json(500, {"error": str(err)})
+
+        return self._json(503, {"error": "No AI key (GROQ_API_KEY or GEMINI_API_KEY) configured in .env"})
+
     # ── GET /api/ping ─────────────────────────────────────────────────────────
     def _ping(self):
         try:
@@ -322,6 +403,7 @@ class Handler(SimpleHTTPRequestHandler):
             "/api/register":  self._register,
             "/api/login":     self._login,
             "/api/questions": self._save_question,
+            "/api/ai/solve":  self._ai_solve,
         }
         handler = routes.get(path)
         if handler:
@@ -336,6 +418,14 @@ class Handler(SimpleHTTPRequestHandler):
 
         if path == "/api/ping":
             self._ping()
+        elif path == "/api/ai/status":
+            groq_key = bool(os.environ.get("GROQ_API_KEY", "").strip())
+            gemini_key = bool(os.environ.get("GEMINI_API_KEY", "").strip())
+            self._json(200, {
+                "ok": True,
+                "server_ai_ready": groq_key or gemini_key,
+                "provider": "Groq (Llama 3.3)" if groq_key else ("Gemini" if gemini_key else "none")
+            })
         elif path == "/api/history":
             self._history(params)
         elif path == "/api/admin/students":
@@ -357,12 +447,12 @@ if __name__ == "__main__":
     print("=" * 56)
     print("  Initialising database …")
     db.init_db()
-    print("  Verifying database connection …")
+    print("  Verifying database connection ...")
     try:
         info = db.ping()
-        print(f"  ✅  Connected → database: {info['database']}, time: {info['server_time']}")
+        print(f"  [OK] Connected -> database: {info['database']}, time: {info['server_time']}")
     except Exception as exc:
-        print(f"  ⚠️  Could not ping database: {exc}")
+        print(f"  [WARN] Could not ping database: {exc}")
     print("=" * 56)
     print("  API endpoints:")
     print("    POST /api/register         Register student")
@@ -372,7 +462,8 @@ if __name__ == "__main__":
     print("    GET  /api/admin/students   Admin: all students")
     print("    GET  /api/admin/stats      Admin: aggregate stats")
     print("    GET  /api/ping             Health / DB check")
-    print(f"  Admin secret:  {'SET ✅' if ADMIN_SECRET else 'NOT SET ❌  (add ADMIN_SECRET to .env)'}")
+    admin_status = "SET [OK]" if ADMIN_SECRET else "NOT SET [WARN] (add ADMIN_SECRET to .env)"
+    print(f"  Admin secret:  {admin_status}")
     print("=" * 56)
     httpd = HTTPServer(("", PORT), Handler)
     try:

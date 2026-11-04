@@ -691,9 +691,38 @@ function showErrToast(msg) {
   setTimeout(() => { if(toast) toast.style.display='none'; }, 8000);
 }
 
+// ── Server-Side AI Proxy (Groq / Gemini via .env) ─────────
+async function askServerAI(prompt) {
+  try {
+    const res = await fetch('/api/ai/solve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.ok && data.result) {
+      window._lastAIProvider = data.provider || 'EchoTwins AI (Groq)';
+      return data.result;
+    }
+  } catch (e) {
+    // Server not running or proxy offline
+  }
+  return null;
+}
+
 // ── Universal AI caller with fallback chain ────────────────
-// Priority: Meta → Gemini → demo  (or as set in AI_PROVIDER)
+// Priority: Server Proxy (Groq .env) → Meta → Gemini → demo
 async function askAI(prompt) {
+  // 1. Try secure Server AI Proxy (Groq / Llama 3.3 from .env) first
+  try {
+    const srv = await askServerAI(prompt);
+    if (srv) return srv;
+  } catch(e) {
+    console.warn('Server AI proxy skipped:', e.message);
+  }
+
+  // 2. Client-side fallbacks (if user set keys in browser)
   const provider = ECHOTWINS_CONFIG.ACTIVE_AI;
 
   if (provider === 'meta') {
@@ -1416,12 +1445,6 @@ async function fetchAIAnswer() {
   const question    = document.getElementById('q-textarea').value.trim();
   const userThought = document.getElementById('p2-reply').value.trim() || document.getElementById('session-summary').textContent;
 
-  if (ECHOTWINS_CONFIG.ACTIVE_AI === 'demo') {
-    showAIStatusBadge('demo');
-    generateContextualFallback(question, userThought);
-    return;
-  }
-
   showAIStatusBadge('loading');
   try {
     const prompt  = buildSolverPrompt(question, userThought, selectedDifficulty);
@@ -1713,41 +1736,23 @@ async function sendAIReply() {
   waveform.classList.remove('paused');
   bubble.style.opacity = '.4';
 
-  if (ECHOTWINS_CONFIG.ACTIVE_AI !== 'demo') {
-    const question = document.getElementById('q-textarea').value.trim();
-    try {
-      const followUp = `You are EchoTwins AI tutor. The student's question is: "${question}". They just said: "${reply}". Give a short Socratic follow-up response (2-3 sentences max) to deepen their thinking. Be warm and encouraging. Plain text only.`;
-      const response = await askAI(followUp);
-      setTimeout(() => {
-        const text = response || aiResponses[replyCount % aiResponses.length];
-        bubble.innerHTML = '💬 ' + text;
-        bubble.style.opacity = '1';
-        document.getElementById('ai-status-txt').textContent = 'Listening to your thoughts…';
-        document.getElementById('session-summary').textContent = '"' + reply.substring(0,200) + (reply.length>200?'…':'') + '"';
-        speakText(text);
-        replyCount++;
-      }, 700);
-    } catch(e) {
-      setTimeout(() => {
-        const text = aiResponses[replyCount % aiResponses.length];
-        bubble.innerHTML = '💬 ' + text;
-        bubble.style.opacity = '1';
-        document.getElementById('ai-status-txt').textContent = 'Listening…';
-        speakText(text);
-        replyCount++;
-      }, 900);
-    }
-  } else {
-    setTimeout(() => {
-      const text = aiResponses[replyCount % aiResponses.length];
-      bubble.innerHTML = '💬 ' + text;
-      bubble.style.opacity = '1';
-      document.getElementById('ai-status-txt').textContent = 'Listening to your thoughts…';
-      document.getElementById('session-summary').textContent = '"' + reply.substring(0,200) + '"';
-      speakText(text);
-      replyCount++;
-    }, 900);
+  const question = document.getElementById('q-textarea').value.trim();
+  let text = '';
+  try {
+    const followUp = `You are EchoTwins AI tutor. The student's question is: "${question}". They just said: "${reply}". Give a short Socratic follow-up response (2-3 sentences max) to deepen their thinking. Be warm and encouraging. Plain text only.`;
+    const response = await askAI(followUp);
+    text = response || aiResponses[replyCount % aiResponses.length];
+  } catch(e) {
+    text = aiResponses[replyCount % aiResponses.length];
   }
+  setTimeout(() => {
+    bubble.innerHTML = '💬 ' + text;
+    bubble.style.opacity = '1';
+    document.getElementById('ai-status-txt').textContent = 'Listening to your thoughts…';
+    document.getElementById('session-summary').textContent = '"' + reply.substring(0,200) + (reply.length>200?'…':'') + '"';
+    speakText(text);
+    replyCount++;
+  }, 700);
   inp.value = '';
 }
 
